@@ -1,7 +1,7 @@
 /**
  * 도로명 주소 검색 및 위도/경도 좌표 자동 지오코딩 서비스
- * - 전국/지역 유치원 & 학교 데이터베이스 1차 고속 매칭 (곰내유치원 등 모든 유치원 지원)
- * - 온라인 실시간 지오코딩 및 Daum 공식 도로명 주소 팝업 통합
+ * - 창원, 경남, 부산 및 전국 유치원/학교 실시간 하이브리드 검색
+ * - Daum 공식 도로명 주소 검색 팝업
  */
 
 import { queryKoreaSchoolsDB } from './koreaSchoolsData'
@@ -39,7 +39,7 @@ function loadDaumPostcodeScript(): Promise<void> {
 }
 
 /**
- * 키워드(학교명, 유치원명, 장소명)로 전국 장소 및 도로명 주소/좌표 실시간 하이브리드 검색
+ * 키워드(유치원명, 학교명, 장소명)로 실시간 도로명 주소 & 좌표 검색
  */
 export async function searchPlacesLive(query: string): Promise<PlaceSearchResult[]> {
   const trimmed = query.trim()
@@ -48,7 +48,7 @@ export async function searchPlacesLive(query: string): Promise<PlaceSearchResult
   const results: PlaceSearchResult[] = []
   const seenNames = new Set<string>()
 
-  // 1. 유치원/학교 마스터 데이터베이스 1차 초고속 검색 (곰내유치원, 정관, 창원 등 100% 매칭)
+  // 1. 유치원/학교 데이터베이스 검색 (밝은별명성유치원, 곰내유치원, 마산무학여중 등 100% 즉시 반환)
   const localMatches = queryKoreaSchoolsDB(trimmed)
   for (const item of localMatches) {
     if (!seenNames.has(item.name)) {
@@ -176,48 +176,10 @@ export async function geocodeAddress(addressText: string): Promise<{ lat: number
     }
   }
 
-  // 2. 카카오 Geocoder 시도
-  const kakao = (window as unknown as {
-    kakao?: {
-      maps?: {
-        services?: {
-          Geocoder: new () => {
-            addressSearch: (
-              addr: string,
-              callback: (result: Array<{ address_name: string; road_address: { address_name: string }; y: string; x: string }>, status: string) => void
-            ) => void
-          }
-          Status: { OK: string }
-        }
-      }
-    }
-  }).kakao
-
-  if (kakao?.maps?.services?.Geocoder) {
-    try {
-      const res = await new Promise<{ lat: number; lng: number; address: string } | null>((resolve) => {
-        const geocoder = new kakao.maps!.services!.Geocoder()
-        geocoder.addressSearch(trimmed, (result, status) => {
-          if (status === kakao.maps!.services!.Status.OK && result.length > 0) {
-            const first = result[0]
-            resolve({
-              lat: parseFloat(first.y),
-              lng: parseFloat(first.x),
-              address: first.road_address?.address_name || first.address_name,
-            })
-          } else {
-            resolve(null)
-          }
-        })
-      })
-      if (res) return res
-    } catch {}
-  }
-
-  // 3. Nominatim 엔진으로 좌표 변환
+  // 2. Nominatim 엔진으로 좌표 변환
   try {
     const list = await searchPlacesLive(trimmed)
-    if (list.length > 0) {
+    if (list.length > 0 && list[0].lat && list[0].lng) {
       return {
         lat: list[0].lat,
         lng: list[0].lng,
