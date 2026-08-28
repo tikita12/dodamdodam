@@ -13,8 +13,12 @@ import {
 import { db } from '@/firebase/config'
 import { COLLECTIONS, getCollectionPath } from '@/utils/firestorePaths'
 import type { Volunteer } from '@/types'
+import { hashPassword } from '@/utils/crypto'
 
-// 기본 운영 자원봉사자 15인 실명 명단 (기본 승인 상태)
+// 기본 초기 비밀번호 ('0000')
+export const DEFAULT_INIT_PASSWORD = '0000'
+
+// 기본 운영 자원봉사자 15인 실명 명단
 const BASE_REAL_VOLUNTEERS: Volunteer[] = [
   { id: 'vol-boyun', name: '장보윤', status: 'approved', createdAt: Timestamp.now() },
   { id: 'vol-yeeun', name: '신예은', status: 'approved', createdAt: Timestamp.now() },
@@ -45,7 +49,6 @@ function getStoredVolunteers(): Volunteer[] {
     if (raw) {
       const parsed = JSON.parse(raw) as Volunteer[]
       parsed.forEach((v) => {
-        // 기존 저장된 봉사자 중 status 누락 시 'approved'로 기본값 설정
         map.set(v.id, {
           ...v,
           status: v.status || 'approved',
@@ -64,7 +67,7 @@ function getStoredVolunteers(): Volunteer[] {
   return Array.from(map.values())
 }
 
-const localVolunteers: Volunteer[] = getStoredVolunteers()
+export const localVolunteers: Volunteer[] = getStoredVolunteers()
 
 function saveVolunteers() {
   try {
@@ -125,12 +128,12 @@ export function subscribeVolunteers(
             const existing = localVolunteers.find((v) => v.id === id || v.name === data.name)
             if (existing) {
               existing.status = data.status || existing.status || 'approved'
-              if (data.password) existing.password = data.password
+              if (data.passwordHash) existing.passwordHash = data.passwordHash
             } else {
               localVolunteers.push({
                 id,
                 name: data.name || '',
-                password: data.password || '',
+                passwordHash: data.passwordHash || '',
                 status: data.status || 'approved',
                 createdAt: data.createdAt,
                 approvedAt: data.approvedAt,
@@ -189,7 +192,7 @@ export function subscribeAllVolunteers(callback: (volunteers: Volunteer[]) => vo
 }
 
 /**
- * [신규 봉사자 가입 신청] - 승인 대기(pending) 상태로 생성
+ * [신규 봉사자 가입 신청] - SHA-256 해시 저장 및 승인 대기(pending) 상태로 생성
  */
 export async function registerVolunteer(name: string, password: string): Promise<Volunteer> {
   const trimmedName = name.trim()
@@ -199,6 +202,8 @@ export async function registerVolunteer(name: string, password: string): Promise
   if (!trimmedPassword || trimmedPassword.length < 4) {
     throw new Error('비밀번호는 4자리 이상 입력해주세요.')
   }
+
+  const hashed = await hashPassword(trimmedPassword)
 
   const existing = localVolunteers.find((v) => v.name === trimmedName)
   if (existing) {
@@ -210,16 +215,16 @@ export async function registerVolunteer(name: string, password: string): Promise
     }
     // 반려 상태인 경우 재신청 처리
     existing.status = 'pending'
-    existing.password = trimmedPassword
+    existing.passwordHash = hashed
     saveVolunteers()
     notifySubscribers()
 
     try {
-      updateDoc(doc(db, getCollectionPath.volunteer(existing.id)), {
+      await updateDoc(doc(db, getCollectionPath.volunteer(existing.id)), {
         status: 'pending',
-        password: trimmedPassword,
+        passwordHash: hashed,
         updatedAt: serverTimestamp(),
-      }).catch(() => {})
+      })
     } catch {}
 
     return existing
@@ -228,7 +233,7 @@ export async function registerVolunteer(name: string, password: string): Promise
   const newVol: Volunteer = {
     id: `vol-${Date.now()}`,
     name: trimmedName,
-    password: trimmedPassword,
+    passwordHash: hashed,
     status: 'pending',
     createdAt: Timestamp.now(),
   }
@@ -240,7 +245,7 @@ export async function registerVolunteer(name: string, password: string): Promise
   try {
     const docRef = await addDoc(collection(db, COLLECTIONS.VOLUNTEERS), {
       name: trimmedName,
-      password: trimmedPassword,
+      passwordHash: hashed,
       status: 'pending',
       createdAt: serverTimestamp(),
     })
@@ -253,7 +258,7 @@ export async function registerVolunteer(name: string, password: string): Promise
 }
 
 /**
- * [봉사자 로그인] - 이름 및 비밀번호 검증 & 승인 상태 확인
+ * [봉사자 로그인] - 이름 및 단방향 해시 비밀번호 검증 & 승인 상태 확인
  */
 export async function loginVolunteer(name: string, password: string): Promise<Volunteer> {
   const trimmedName = name.trim()
@@ -275,19 +280,25 @@ export async function loginVolunteer(name: string, password: string): Promise<Vo
     throw new Error(`'${trimmedName}'님의 봉사자 등록이 반려되었습니다. 관리자에게 문의해주세요.`)
   }
 
-  // 비밀번호가 설정되어 있는 경우 검증
-  if (target.password && target.password !== trimmedPassword) {
-    throw new Error('비밀번호가 일치하지 않습니다. 다시 확인해주세요.')
-  }
+  const inputHash = await hashPassword(trimmedPassword)
+  const defaultHash = await hashPassword(DEFAULT_INIT_PASSWORD)
 
-  // 기본 15인 등 비밀번호가 아직 미설정된 경우 이번 비밀번호로 등록
-  if (!target.password) {
-    target.password = trimmedPassword
+  // 비밀번호 해시가 저장되어 있는 경우 검증
+  if (target.passwordHash) {
+    if (target.passwordHash !== inputHash) {
+      throw new Error('비밀번호가 일치하지 않습니다. 다시 확인해주세요.')
+    }
+  } else {
+    // 기본 15인 등 아직 해시 미설정 상태인 경우: 기본 비밀번호('0000') 검증
+    if (inputHash !== defaultHash) {
+      throw new Error(`초기 비밀번호는 '${DEFAULT_INIT_PASSWORD}'입니다. 입력 후 입장하여 비밀번호를 변경해주세요.`)
+    }
+    target.passwordHash = inputHash
     saveVolunteers()
     try {
-      updateDoc(doc(db, getCollectionPath.volunteer(target.id)), {
-        password: trimmedPassword,
-      }).catch(() => {})
+      await updateDoc(doc(db, getCollectionPath.volunteer(target.id)), {
+        passwordHash: inputHash,
+      })
     } catch {}
   }
 
@@ -312,20 +323,27 @@ export async function changeVolunteerPassword(
   const target = localVolunteers.find((v) => v.id === id)
   if (!target) throw new Error('봉사자 정보를 찾을 수 없습니다.')
 
-  if (target.password && target.password !== trimmedOld) {
+  const oldHash = await hashPassword(trimmedOld)
+  const defaultHash = await hashPassword(DEFAULT_INIT_PASSWORD)
+  const currentExpectedHash = target.passwordHash || defaultHash
+
+  if (currentExpectedHash !== oldHash) {
     throw new Error('현재 비밀번호가 일치하지 않습니다.')
   }
 
-  target.password = trimmedNew
+  const newHash = await hashPassword(trimmedNew)
+  target.passwordHash = newHash
   saveVolunteers()
   notifySubscribers()
 
   try {
-    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
-      password: trimmedNew,
+    await updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+      passwordHash: newHash,
       updatedAt: serverTimestamp(),
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    console.error('비밀번호 업데이트 실패:', err)
+  }
 }
 
 /**
@@ -340,16 +358,19 @@ export async function resetVolunteerPasswordByAdmin(id: string, newPassword: str
   const target = localVolunteers.find((v) => v.id === id)
   if (!target) throw new Error('봉사자 정보를 찾을 수 없습니다.')
 
-  target.password = trimmedNew
+  const newHash = await hashPassword(trimmedNew)
+  target.passwordHash = newHash
   saveVolunteers()
   notifySubscribers()
 
   try {
-    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
-      password: trimmedNew,
+    await updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+      passwordHash: newHash,
       updatedAt: serverTimestamp(),
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    console.error('관리자 비밀번호 재설정 실패:', err)
+  }
 }
 
 /**
@@ -365,10 +386,10 @@ export async function approveVolunteer(id: string): Promise<void> {
   notifySubscribers()
 
   try {
-    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+    await updateDoc(doc(db, getCollectionPath.volunteer(id)), {
       status: 'approved',
       approvedAt: serverTimestamp(),
-    }).catch(() => {})
+    })
   } catch {}
 }
 
@@ -385,15 +406,15 @@ export async function rejectVolunteer(id: string): Promise<void> {
   notifySubscribers()
 
   try {
-    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+    await updateDoc(doc(db, getCollectionPath.volunteer(id)), {
       status: 'rejected',
       rejectedAt: serverTimestamp(),
-    }).catch(() => {})
+    })
   } catch {}
 }
 
 /**
- * [관리자: 직접 봉사자 등록] - 즉시 승인 상태로 추가
+ * [관리자: 직접 봉사자 등록] - 초기 비밀번호 '0000' 해시 적용 및 즉시 승인
  */
 export async function addVolunteer(name: string) {
   const trimmed = name.trim()
@@ -408,9 +429,11 @@ export async function addVolunteer(name: string) {
     throw new Error(`이미 '${trimmed}' 봉사자가 등록되어 있습니다.`)
   }
 
+  const defaultHash = await hashPassword(DEFAULT_INIT_PASSWORD)
   const newVol: Volunteer = {
     id: `vol-${Date.now()}`,
     name: trimmed,
+    passwordHash: defaultHash,
     status: 'approved',
     createdAt: Timestamp.now(),
     approvedAt: Timestamp.now(),
@@ -421,16 +444,16 @@ export async function addVolunteer(name: string) {
   notifySubscribers()
 
   try {
-    addDoc(collection(db, COLLECTIONS.VOLUNTEERS), {
+    const docRef = await addDoc(collection(db, COLLECTIONS.VOLUNTEERS), {
       name: trimmed,
+      passwordHash: defaultHash,
       status: 'approved',
       createdAt: serverTimestamp(),
       approvedAt: serverTimestamp(),
-    }).then((docRef) => {
-      newVol.id = docRef.id
-      saveVolunteers()
-      notifySubscribers()
-    }).catch(() => {})
+    })
+    newVol.id = docRef.id
+    saveVolunteers()
+    notifySubscribers()
   } catch {}
 
   return { id: newVol.id }
@@ -448,6 +471,6 @@ export async function removeVolunteer(id: string) {
   }
 
   try {
-    deleteDoc(doc(db, getCollectionPath.volunteer(id))).catch(() => {})
+    await deleteDoc(doc(db, getCollectionPath.volunteer(id)))
   } catch {}
 }

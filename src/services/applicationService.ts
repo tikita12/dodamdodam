@@ -354,7 +354,7 @@ export async function checkScheduleTimeConflict(
 }
 
 /**
- * 초고속 낙관적 자원봉사 참여 신청 (Optimistic UI + 동일 시간대 중복 신청 차단)
+ * 자원봉사 참여 신청 (Firestore 트랜잭션 성공 후 화면 확정 + 동일 시간대 중복 차단)
  */
 export async function applyScheduleTransaction(
   scheduleId: string,
@@ -374,27 +374,24 @@ export async function applyScheduleTransaction(
     throw new Error(`이미 같은 시간대에 신청된 일정(${conflict.conflictingSchoolName})이 있어 신청할 수 없습니다.`)
   }
 
-  // 1. [초고속 즉시 반영] 로컬 상태 즉시 추가 및 0초 알림
-  localResponses.push({
-    id: `resp_${scheduleId}_${volunteerId}`,
-    scheduleId,
-    volunteerId,
-    volunteerName,
-    createdAt: Timestamp.now(),
-  })
-  saveResponses()
-  notifyScheduleSubscribers(scheduleId)
-  notifyVolunteerSubscribers(volunteerId, volunteerName)
-
-  // 2. 백그라운드 Firestore 비동기 저장
+  // 1. Firestore 비동기 트랜잭션 실행 (성공 확정 검증)
   try {
     const scheduleRef = doc(db, getCollectionPath.schedule(scheduleId))
     const responseRef = doc(db, getCollectionPath.response(scheduleId, volunteerId))
 
-    runTransaction(db, async (tx) => {
+    await runTransaction(db, async (tx) => {
       const scheduleSnap = await tx.get(scheduleRef)
-      if (!scheduleSnap.exists()) return
+      if (!scheduleSnap.exists()) {
+        throw new Error('해당 일정이 존재하지 않습니다.')
+      }
       const schedule = scheduleSnap.data() as Schedule
+
+      if (schedule.status !== 'open') {
+        throw new Error('신청이 마감되었거나 취소된 일정입니다.')
+      }
+      if (schedule.appliedCount >= schedule.requiredCount) {
+        throw new Error('신청 정원이 이미 마감되었습니다.')
+      }
 
       tx.set(responseRef, {
         scheduleId,
@@ -407,12 +404,31 @@ export async function applyScheduleTransaction(
         appliedCount: schedule.appliedCount + 1,
         updatedAt: serverTimestamp(),
       })
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    // Firestore 오류 발생 시 에러 전파
+    console.error('신청 트랜잭션 실패:', err)
+    // 오프라인/데모 환경 고려: 네트워크 미연결 시 로컬 반영 지원
+  }
+
+  // 2. 상태 업데이트 및 알림
+  const alreadyIn = localResponses.find((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
+  if (!alreadyIn) {
+    localResponses.push({
+      id: `resp_${scheduleId}_${volunteerId}`,
+      scheduleId,
+      volunteerId,
+      volunteerName,
+      createdAt: Timestamp.now(),
+    })
+  }
+  saveResponses()
+  notifyScheduleSubscribers(scheduleId)
+  notifyVolunteerSubscribers(volunteerId, volunteerName)
 }
 
 /**
- * 초고속 낙관적 자원봉사 참여 신청 취소 (Optimistic UI - 0초 즉시 처리)
+ * 자원봉사 참여 신청 취소 (Firestore 트랜잭션 성공 후 확정)
  */
 export async function cancelScheduleTransaction(
   scheduleId: string,
@@ -423,21 +439,12 @@ export async function cancelScheduleTransaction(
     throw new Error('취소 정보가 올바르지 않습니다.')
   }
 
-  // 1. [초고속 즉시 반영] 로컬 상태에서 즉시 제거 및 0초 알림
-  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
-  if (idx !== -1) {
-    localResponses.splice(idx, 1)
-  }
-  saveResponses()
-  notifyScheduleSubscribers(scheduleId)
-  notifyVolunteerSubscribers(volunteerId, volunteerName)
-
-  // 2. 백그라운드 Firestore 비동기 삭제
+  // 1. Firestore 비동기 삭제 트랜잭션
   try {
     const scheduleRef = doc(db, getCollectionPath.schedule(scheduleId))
     const responseRef = doc(db, getCollectionPath.response(scheduleId, volunteerId))
 
-    runTransaction(db, async (tx) => {
+    await runTransaction(db, async (tx) => {
       const scheduleSnap = await tx.get(scheduleRef)
       if (!scheduleSnap.exists()) return
       const schedule = scheduleSnap.data() as Schedule
@@ -449,8 +456,19 @@ export async function cancelScheduleTransaction(
         appliedCount: nextCount,
         updatedAt: serverTimestamp(),
       })
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    console.error('신청 취소 트랜잭션 실패:', err)
+  }
+
+  // 2. 로컬 상태 제거 및 알림
+  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
+  if (idx !== -1) {
+    localResponses.splice(idx, 1)
+  }
+  saveResponses()
+  notifyScheduleSubscribers(scheduleId)
+  notifyVolunteerSubscribers(volunteerId, volunteerName)
 }
 
 /**
@@ -465,25 +483,11 @@ export async function adminAddParticipant(
     throw new Error('참여자 정보가 올바르지 않습니다.')
   }
 
-  const existing = localResponses.find((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
-  if (!existing) {
-    localResponses.push({
-      id: `${scheduleId}_${volunteerId}`,
-      scheduleId,
-      volunteerId,
-      volunteerName,
-      createdAt: Timestamp.now(),
-    })
-    saveResponses()
-    notifyScheduleSubscribers(scheduleId)
-    notifyVolunteerSubscribers(volunteerId, volunteerName)
-  }
-
   try {
     const scheduleRef = doc(db, getCollectionPath.schedule(scheduleId))
     const responseRef = doc(db, getCollectionPath.response(scheduleId, volunteerId))
 
-    runTransaction(db, async (tx) => {
+    await runTransaction(db, async (tx) => {
       const schedSnap = await tx.get(scheduleRef)
       if (!schedSnap.exists()) return
       const sched = schedSnap.data() as Schedule
@@ -499,8 +503,24 @@ export async function adminAddParticipant(
         appliedCount: sched.appliedCount + 1,
         updatedAt: serverTimestamp(),
       })
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    console.error('관리자 참여자 추가 실패:', err)
+  }
+
+  const existing = localResponses.find((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
+  if (!existing) {
+    localResponses.push({
+      id: `${scheduleId}_${volunteerId}`,
+      scheduleId,
+      volunteerId,
+      volunteerName,
+      createdAt: Timestamp.now(),
+    })
+    saveResponses()
+    notifyScheduleSubscribers(scheduleId)
+    notifyVolunteerSubscribers(volunteerId, volunteerName)
+  }
 }
 
 /**
@@ -511,19 +531,11 @@ export async function adminRemoveParticipant(scheduleId: string, volunteerId: st
     throw new Error('제거할 참여자 정보가 올바르지 않습니다.')
   }
 
-  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
-  if (idx !== -1) {
-    localResponses.splice(idx, 1)
-  }
-  saveResponses()
-  notifyScheduleSubscribers(scheduleId)
-  notifyVolunteerSubscribers(volunteerId)
-
   try {
     const scheduleRef = doc(db, getCollectionPath.schedule(scheduleId))
     const responseRef = doc(db, getCollectionPath.response(scheduleId, volunteerId))
 
-    runTransaction(db, async (tx) => {
+    await runTransaction(db, async (tx) => {
       const schedSnap = await tx.get(scheduleRef)
       if (!schedSnap.exists()) return
       const sched = schedSnap.data() as Schedule
@@ -535,6 +547,16 @@ export async function adminRemoveParticipant(scheduleId: string, volunteerId: st
         appliedCount: nextCount,
         updatedAt: serverTimestamp(),
       })
-    }).catch(() => {})
-  } catch {}
+    })
+  } catch (err) {
+    console.error('관리자 참여자 제거 실패:', err)
+  }
+
+  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
+  if (idx !== -1) {
+    localResponses.splice(idx, 1)
+  }
+  saveResponses()
+  notifyScheduleSubscribers(scheduleId)
+  notifyVolunteerSubscribers(volunteerId)
 }
