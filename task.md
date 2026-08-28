@@ -27,7 +27,7 @@
   - [x] 3.1 등록된 15인 봉사자 이름 실시간 검색 드롭다운 구현
   - [x] 3.2 선택한 봉사자 세션 로컬 영속화 및 1초 입장
   - [x] 3.3 Firebase Auth 이메일/비밀번호 관리자 로그인 모달 구현
-  - [x] 3.4 관리자 화이트리스트 계정 확장 (`bshine530@gmail.com`, `cwacc@hanmail.net`, `admin2@dodam.com`)
+  - [x] 3.4 관리자 화이트리스트 2명 고정 기준 (`cwacc@hanmail.net`, `admin2@dodam.com`)
 
 - [x] **Phase 4: 메인 화면 - 캘린더 및 일정 목록**
   - [x] 4.1 월별 캘린더 그리드 및 실시간 일정 렌더링 구현

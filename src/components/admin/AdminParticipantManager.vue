@@ -5,7 +5,7 @@ import {
   adminAddParticipant,
   adminRemoveParticipant,
 } from '@/services/applicationService'
-import { Users, User, X, Plus, Loader2 } from 'lucide-vue-next'
+import { Users, User, X, Plus, Loader2 } from '@lucide/vue'
 
 const props = defineProps<{
   scheduleId: string

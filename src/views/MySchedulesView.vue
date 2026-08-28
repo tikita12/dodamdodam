@@ -19,7 +19,7 @@ import {
   AlertCircle,
   ArrowRight,
   RotateCcw,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import dayjs from 'dayjs'
 
 const router = useRouter()

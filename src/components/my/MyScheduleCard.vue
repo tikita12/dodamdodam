@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import type { Schedule } from '@/types'
 import { formatScheduleDateTime } from '@/utils/datetime'
 import { computeScheduleStatus } from '@/utils/status'
-import { Calendar, Users, ChevronRight, AlertTriangle } from 'lucide-vue-next'
+import { Calendar, Users, ChevronRight, AlertTriangle } from '@lucide/vue'
 
 const props = defineProps<{
   schedule: Schedule

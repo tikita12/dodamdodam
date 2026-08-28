@@ -17,7 +17,7 @@ import {
   Loader2,
   AlertCircle,
   RotateCcw,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import dayjs from 'dayjs'
 
 const schedules = ref<Schedule[]>([])

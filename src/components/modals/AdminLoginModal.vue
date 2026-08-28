@@ -3,12 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { loginAdminWithEmail } from '@/services/adminAuthService'
-import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info } from 'lucide-vue-next'
+import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info } from '@lucide/vue'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
 
-const email = ref('bshine530@gmail.com')
+const email = ref('cwacc@hanmail.net')
 const password = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -98,7 +98,7 @@ function handleClose() {
               v-model="email"
               type="email"
               required
-              placeholder="cwacc@hanmail.net 또는 bshine530@gmail.com"
+              placeholder="cwacc@hanmail.net 또는 admin2@dodam.com"
               class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
             />
           </div>
@@ -106,16 +106,16 @@ function handleClose() {
             <button
               type="button"
               @click="email = 'cwacc@hanmail.net'"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
             >
               cwacc@hanmail.net
             </button>
             <button
               type="button"
-              @click="email = 'bshine530@gmail.com'"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition"
+              @click="email = 'admin2@dodam.com'"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
             >
-              bshine530@gmail.com
+              admin2@dodam.com
             </button>
           </div>
         </div>

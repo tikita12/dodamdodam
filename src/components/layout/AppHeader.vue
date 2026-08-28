@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { ArrowLeft, Shield, LogOut, Sprout } from 'lucide-vue-next'
+import { ArrowLeft, Shield, LogOut, Sprout } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -30,7 +30,7 @@
 
 ### 3. 🛡️ 관리자 & 봉사자 역할 완전 분리
 - 관리자 로그인 시 봉사자 세션과 완전히 격리된 독립 관리자 모드로 동작하며, 상단 헤더에 관리자 배지가 선명하게 표시됩니다.
-- 관리자 허용 계정: `cwacc@hanmail.net`, `bshine530@gmail.com`, `admin2@dodam.com`
+- 관리자 허용 계정: `cwacc@hanmail.net`, `admin2@dodam.com` (2명 고정 기준)
 
 ### 4. 🗺️ 무설정 인터랙티브 지도 엔진 (`KakaoMap.vue`)
 - 별도 API 키 없이도 OpenStreetMap + Leaflet 엔진으로 실제 도로망, 건물, 마커, 인포윈도우가 즉시 렌더링되며, 카카오맵 길찾기 링크가 함께 제공됩니다.
@@ -48,10 +48,10 @@
 |------|------|
 | **Frontend Framework** | Vue 3 (Composition API, `<script setup>`, TypeScript) |
 | **Build & Tooling** | Vite 6, Vue Router 4, Pinia |
-| **Styling** | Tailwind CSS v4, Lucide Vue Next Icons |
+| **Styling** | Tailwind CSS v4, @lucide/vue Icons |
 | **Backend & Cloud** | Firebase Firestore (Realtime), Firebase Authentication |
 | **Map Engine** | Leaflet, OpenStreetMap, Kakao Maps JavaScript SDK |
-| **Testing** | Vitest (21개 단위 테스트 100% Pass) |
+| **Testing** | Vitest (단위 테스트 통과) |
 
 ---
 
@@ -89,8 +89,8 @@ VITE_FIREBASE_APP_ID=your_app_id
 # 카카오맵 API 키 (선택사항, 미입력 시 Leaflet 인터랙티브 맵 자동 구동)
 VITE_KAKAO_MAP_API_KEY=your_kakao_javascript_api_key
 
-# 관리자 허용 이메일 화이트리스트
-VITE_ADMIN_EMAILS=cwacc@hanmail.net,bshine530@gmail.com,admin2@dodam.com
+# 관리자 허용 이메일 화이트리스트 (2명 고정 기준)
+VITE_ADMIN_EMAILS=cwacc@hanmail.net,admin2@dodam.com
 ```
 
 ---

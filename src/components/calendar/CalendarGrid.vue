@@ -5,7 +5,7 @@ import type { Schedule } from '@/types'
 import { toDayjs, formatFullDate } from '@/utils/datetime'
 import CalendarChip from './CalendarChip.vue'
 import MultiScheduleModal from '@/components/modals/MultiScheduleModal.vue'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight } from '@lucide/vue'
 
 const props = defineProps<{
   schedules: Schedule[]

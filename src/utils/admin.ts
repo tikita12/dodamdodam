@@ -1,9 +1,10 @@
 /**
- * 관리자 이메일 화이트리스트 중앙 관리
- * firestore.rules와 클라이언트에서 일치하도록 기본값 유지
+ * 관리자 이메일 화이트리스트 중앙 관리 (Single Source of Truth)
+ * firestore.rules와 클라이언트에서 일치하도록 최종 기준 2명 유지
+ * 1. cwacc@hanmail.net
+ * 2. admin2@dodam.com
  */
 export const DEFAULT_ADMIN_EMAILS = [
-  'bshine530@gmail.com',
   'cwacc@hanmail.net',
   'admin2@dodam.com',
 ]

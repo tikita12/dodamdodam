@@ -20,7 +20,7 @@ const isEntryView = computed(() => route.path === '/')
       <RouterView />
     </main>
 
-    <!-- Bottom Navigation Bar (홈, 일정, 관리자) -->
+    <!-- Bottom Navigation Bar (?? ?�정, 관리자) -->
     <AppBottomNav />
 
     <!-- Global Volunteer Change Modal -->

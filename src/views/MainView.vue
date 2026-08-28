@@ -5,7 +5,7 @@ import type { Schedule } from '@/types'
 import { isWithinRecentDays, toDayjs } from '@/utils/datetime'
 import CalendarGrid from '@/components/calendar/CalendarGrid.vue'
 import ScheduleCard from '@/components/schedule/ScheduleCard.vue'
-import { Sparkles, CalendarDays, Inbox, Loader2, AlertCircle, RotateCcw } from 'lucide-vue-next'
+import { Sparkles, CalendarDays, Inbox, Loader2, AlertCircle, RotateCcw } from '@lucide/vue'
 import dayjs from 'dayjs'
 
 const schedules = ref<Schedule[]>([])

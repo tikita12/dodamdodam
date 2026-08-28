@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { MapPin, ExternalLink, Navigation } from 'lucide-vue-next'
+import { MapPin, ExternalLink, Navigation } from '@lucide/vue'
 
 const props = defineProps<{
   schoolName: string

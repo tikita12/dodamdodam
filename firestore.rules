@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 지정된 관리자 이메일 인증 검증 함수 (대소문자 무시)
+    // 지정된 관리자 이메일 2명 인증 검증 함수 (대소문자 무시)
     function isAdmin() {
       return request.auth != null && request.auth.token.email != null &&
-        (request.auth.token.email.lower() == "bshine530@gmail.com" || request.auth.token.email.lower() == "cwacc@hanmail.net" || request.auth.token.email.lower() == "admin2@dodam.com");
+        (request.auth.token.email.lower() == "cwacc@hanmail.net" || request.auth.token.email.lower() == "admin2@dodam.com");
     }
 
     // 일정 컬렉션 (/schedules/{scheduleId})

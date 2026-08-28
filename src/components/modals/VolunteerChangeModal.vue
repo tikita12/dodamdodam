@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { subscribeVolunteers } from '@/services/volunteerService'
 import type { Volunteer } from '@/types'
-import { UserCheck, Search, X } from 'lucide-vue-next'
+import { UserCheck, Search, X } from '@lucide/vue'
 
 const sessionStore = useSessionStore()
 const volunteers = ref<Volunteer[]>([])

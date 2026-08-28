@@ -4,7 +4,7 @@ import { useSessionStore } from '@/stores/session'
 import { applyScheduleTransaction, cancelScheduleTransaction } from '@/services/applicationService'
 import type { Schedule, VolunteerResponse } from '@/types'
 import { computeScheduleStatus } from '@/utils/status'
-import { Check, X, Loader2, AlertCircle } from 'lucide-vue-next'
+import { Check, X, Loader2, AlertCircle } from '@lucide/vue'
 
 const props = defineProps<{
   schedule: Schedule

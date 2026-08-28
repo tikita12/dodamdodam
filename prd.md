@@ -24,7 +24,7 @@
 ### 2.1 관리자 (Admin)
 | 항목 | 내용 |
 |------|------|
-| 허용 계정 | `bshine530@gmail.com`, `cwacc@hanmail.net`, `admin2@dodam.com` |
+| 허용 계정 | `cwacc@hanmail.net`, `admin2@dodam.com` (2명 고정 기준) |
 | 인증 방식 | Firebase Authentication (Email/Password) + Firestore Security Rules 화이트리스트 |
 | 주요 기능 | 일정 등록/수정/취소(0초 즉시 반영), 자원봉사자 명단 관리, 교육과목 관리, 참여자 수동 추가/제거, 일정 확정 토글 |
 | 사용 모드 | 관리자 로그인 시 봉사자 세션과 완전 분리된 독립 관리자 모드로 동작 |

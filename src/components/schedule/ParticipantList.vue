@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import type { VolunteerResponse } from '@/types'
-import { Users, User } from 'lucide-vue-next'
+import { Users, User } from '@lucide/vue'
 
 const props = defineProps<{
   requiredCount: number

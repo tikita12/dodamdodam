@@ -1,6 +1,6 @@
 # 🚀 도담도담 자원봉사 일정관리 배포 및 운영 가이드 (DEPLOY.md)
 
-이 문서는 **도담도담 자원봉사 일정관리 웹앱**을 Firebase 및 카카오맵에 배포하고 운영하기 위한 실전 가이드입니다.
+이 문서는 **도담도담 자원봉사 일정관리 웹앱**을 Firebase 및 GitHub에 배포하고 운영하기 위한 실전 가이드입니다.
 
 ---
 
@@ -12,13 +12,13 @@
    - 위치: `asia-northeast3` (서울) 선택
 3. **Authentication (인증)** 활성화:
    - **로그인 제공업체**: `이메일/비밀번호` 사용 설정
-   - **사용자 추가**: 운영 관리자 이메일(`bshine530@gmail.com`) 및 비밀번호 등록
+   - **사용자 추가**: 운영 관리자 이메일 2명(`cwacc@hanmail.net`, `admin2@dodam.com`) 및 비밀번호 등록
 4. **웹 앱 등록**:
    - 프로젝트 설정 > 일반 > 내 앱에서 웹 앱 등록 후 Firebase SDK 설정 키 확인
 
-### 1-2. 카카오 디벨로퍼스 JavaScript API 키 준비
+### 1-2. 카카오 디벨로퍼스 JavaScript API 키 준비 (선택사항)
 1. [카카오 디벨로퍼스](https://developers.kakao.com/) 로그인 후 내 애플리케이션 추가
-2. **앱 키 > JavaScript 키** 복사
+2. **앱 키 > JavaScript 키** 복사 (미설정 시에도 내장 Leaflet/OpenStreetMap 실제 인터랙티브 지도가 자동 구동됩니다)
 3. **플랫폼 > Web 플랫폼 등록**:
    - `http://localhost:5173` (로컬 개발용)
    - `https://<당신의-프로젝트-ID>.web.app` (Firebase Hosting 배포용)
@@ -39,11 +39,11 @@ VITE_FIREBASE_STORAGE_BUCKET=dodamdodam-app.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
 VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
 
-# Kakao Map JavaScript API Key
+# Kakao Map JavaScript API Key (선택사항)
 VITE_KAKAO_MAP_API_KEY=your_kakao_javascript_api_key_here
 
-# Admin Allowlist Emails (쉼표로 구분)
-VITE_ADMIN_EMAILS=bshine530@gmail.com,admin2@dodam.com
+# Admin Allowlist Emails (2명 고정 기준)
+VITE_ADMIN_EMAILS=cwacc@hanmail.net,admin2@dodam.com
 ```
 
 ---
@@ -57,7 +57,7 @@ npm install
 # 2. 로컬 개발 서버 시작 (http://localhost:5173)
 npm run dev
 
-# 3. 단위 테스트 실행 (Vitest 20개 테스트)
+# 3. 단위 테스트 실행
 npm test
 
 # 4. 프로덕션 빌드 검증
@@ -103,9 +103,6 @@ firebase deploy --only hosting
 ## ⚙️ 5. 초기 운영 데이터 셋업 순서
 
 1. **배포 URL 접속** (`https://<프로젝트ID>.web.app`)
-2. 진입 화면 하단의 **[관리자 로그인]** 클릭 ➔ `bshine530@gmail.com` 및 비밀번호로 로그인
-3. 관리자 대시보드에서:
-   - **[👥 봉사자 관리]**: 15명의 자원봉사자 이름 등록 (예: 홍길동, 김철수 등)
-   - **[📚 교육과목 관리]**: 기본 교육 과목 등록 (예: 청소년 도박예방 교육, 금융생활 교육 등)
-   - **[+ 새 일정]**: 장소명 검색을 통해 새 봉사 일정 등록
-4. 봉사자들은 로그인 없이 진입 화면에서 본인 이름만 선택하여 즉시 일정을 조회하고 1-Click 참여 신청이 가능합니다.
+2. 진입 화면 하단의 **[관리자 로그인]** 클릭 ➔ `cwacc@hanmail.net` 및 비밀번호로 로그인
+3. 기본적으로 2026년 실제 24개 유치원/초등학교 교육 일정 및 15인 봉사자 실명이 기본 탑재되어 있으며, 추가/수정/취소를 자유롭게 진행하실 수 있습니다.
+4. 봉사자들은 별도 비밀번호 없이 진입 화면에서 본인 이름만 선택하여 즉시 일정을 조회하고 1-Click 참여 신청/취소가 가능합니다.

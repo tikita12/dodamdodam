@@ -9,7 +9,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const volunteers = ref<Volunteer[]>([])
 const newVolunteerName = ref('')

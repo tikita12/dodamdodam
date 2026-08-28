@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import type { Schedule } from '@/types'
 import { formatTimeRange } from '@/utils/datetime'
 import { computeScheduleStatus } from '@/utils/status'
-import { Calendar, X, Users, ChevronRight } from 'lucide-vue-next'
+import { Calendar, X, Users, ChevronRight } from '@lucide/vue'
 
 defineProps<{
   isOpen: boolean

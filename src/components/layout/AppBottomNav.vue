@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { Home, CalendarCheck2, Shield, CalendarDays } from 'lucide-vue-next'
+import { Home, CalendarCheck2, Shield, CalendarDays } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
