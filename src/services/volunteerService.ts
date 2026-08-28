@@ -203,7 +203,7 @@ export async function registerVolunteer(name: string, password: string): Promise
   const existing = localVolunteers.find((v) => v.name === trimmedName)
   if (existing) {
     if (existing.status === 'approved') {
-      throw new Error(`'${trimmedName}'님은 이미 승인된 봉사자입니다. [로그인] 탭에서 입장해주세요.`)
+      throw new Error(`'${trimmedName}'님은 이미 등록된 봉사자입니다. [로그인] 탭에서 입장해주세요.`)
     }
     if (existing.status === 'pending') {
       throw new Error(`'${trimmedName}'님은 이미 관리자 승인 대기 중입니다. 승인 완료 후 로그인하실 수 있습니다.`)
@@ -264,7 +264,7 @@ export async function loginVolunteer(name: string, password: string): Promise<Vo
 
   const target = localVolunteers.find((v) => v.name === trimmedName)
   if (!target) {
-    throw new Error(`등록되지 않은 봉사자입니다. 먼저 [봉사자 등록 신청]을 진행해주세요.`)
+    throw new Error(`등록되지 않은 봉사자입니다. 먼저 [신규 등록 신청]을 진행해주세요.`)
   }
 
   if (target.status === 'pending') {
@@ -292,6 +292,64 @@ export async function loginVolunteer(name: string, password: string): Promise<Vo
   }
 
   return target
+}
+
+/**
+ * [봉사자 본인: 비밀번호 변경]
+ */
+export async function changeVolunteerPassword(
+  id: string,
+  oldPassword: string,
+  newPassword: string
+): Promise<void> {
+  const trimmedOld = oldPassword.trim()
+  const trimmedNew = newPassword.trim()
+
+  if (!trimmedNew || trimmedNew.length < 4) {
+    throw new Error('새 비밀번호는 4자리 이상이어야 합니다.')
+  }
+
+  const target = localVolunteers.find((v) => v.id === id)
+  if (!target) throw new Error('봉사자 정보를 찾을 수 없습니다.')
+
+  if (target.password && target.password !== trimmedOld) {
+    throw new Error('현재 비밀번호가 일치하지 않습니다.')
+  }
+
+  target.password = trimmedNew
+  saveVolunteers()
+  notifySubscribers()
+
+  try {
+    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+      password: trimmedNew,
+      updatedAt: serverTimestamp(),
+    }).catch(() => {})
+  } catch {}
+}
+
+/**
+ * [관리자: 봉사자 비밀번호 강제 재설정/초기화]
+ */
+export async function resetVolunteerPasswordByAdmin(id: string, newPassword: string): Promise<void> {
+  const trimmedNew = newPassword.trim()
+  if (!trimmedNew || trimmedNew.length < 4) {
+    throw new Error('비밀번호는 4자리 이상이어야 합니다.')
+  }
+
+  const target = localVolunteers.find((v) => v.id === id)
+  if (!target) throw new Error('봉사자 정보를 찾을 수 없습니다.')
+
+  target.password = trimmedNew
+  saveVolunteers()
+  notifySubscribers()
+
+  try {
+    updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+      password: trimmedNew,
+      updatedAt: serverTimestamp(),
+    }).catch(() => {})
+  } catch {}
 }
 
 /**

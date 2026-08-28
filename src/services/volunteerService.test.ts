@@ -4,9 +4,11 @@ import {
   loginVolunteer,
   approveVolunteer,
   rejectVolunteer,
+  changeVolunteerPassword,
+  resetVolunteerPasswordByAdmin,
 } from './volunteerService'
 
-describe('volunteerService - 관리자 승인제 워크플로우 테스트', () => {
+describe('volunteerService - 관리자 승인제 워크플로우 & 비밀번호 관리 테스트', () => {
   const testName = `테스트봉사자_${Date.now()}`
   const testPassword = 'pass1234!'
 
@@ -39,6 +41,30 @@ describe('volunteerService - 관리자 승인제 워크플로우 테스트', () 
     await expect(loginVolunteer(volName, 'wrong123')).rejects.toThrow(
       '비밀번호가 일치하지 않습니다'
     )
+  })
+
+  it('봉사자 본인이 비밀번호를 직접 변경할 수 있어야 한다', async () => {
+    const changeName = `비번변경_${Date.now()}`
+    const vol = await registerVolunteer(changeName, 'oldpass1')
+    await approveVolunteer(vol.id)
+
+    await changeVolunteerPassword(vol.id, 'oldpass1', 'newpass2')
+
+    // 새 비밀번호로 로그인 성공
+    const logged = await loginVolunteer(changeName, 'newpass2')
+    expect(logged.name).toBe(changeName)
+  })
+
+  it('관리자가 비밀번호를 강제 초기화/재설정할 수 있어야 한다', async () => {
+    const resetName = `비번초기화_${Date.now()}`
+    const vol = await registerVolunteer(resetName, 'initpass1')
+    await approveVolunteer(vol.id)
+
+    // 관리자가 '9999'로 강제 재설정
+    await resetVolunteerPasswordByAdmin(vol.id, '9999')
+
+    const logged = await loginVolunteer(resetName, '9999')
+    expect(logged.name).toBe(resetName)
   })
 
   it('관리자가 반려(rejectVolunteer)하면 반려 에러가 발생해야 한다', async () => {

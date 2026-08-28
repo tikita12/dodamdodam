@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { ArrowLeft, Shield, LogOut, Sprout } from '@lucide/vue'
+import PasswordChangeModal from '@/components/modals/PasswordChangeModal.vue'
+import { ArrowLeft, Shield, LogOut, Sprout, KeyRound } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
+
+const isPasswordModalOpen = ref(false)
 
 // 진입 화면 판별
 const isEntryView = computed(() => route.path === '/')
@@ -26,6 +29,11 @@ function handleBack() {
 
 async function handleAdminLogout() {
   await sessionStore.logoutAdmin()
+  router.push('/')
+}
+
+function handleVolunteerLogout() {
+  sessionStore.clearVolunteer()
   router.push('/')
 }
 </script>
@@ -62,7 +70,7 @@ async function handleAdminLogout() {
       </router-link>
     </div>
 
-    <!-- Right Section: Admin or Volunteer Session Badge (완벽 분리) -->
+    <!-- Right Section: Admin or Volunteer Session Badge -->
     <div class="flex items-center gap-2">
       <!-- 1. 관리자 모드: 관리자 배지 및 로그아웃만 표시 (봉사자 이름 미노출) -->
       <template v-if="sessionStore.isAdmin">
@@ -80,15 +88,43 @@ async function handleAdminLogout() {
         </button>
       </template>
 
-      <!-- 2. 봉사자 모드: 봉사자 이름 고정 배지 표시 (수정 불가) -->
+      <!-- 2. 봉사자 모드: 봉사자 이름 배지, 비밀번호 변경 버튼, 로그아웃 버튼 -->
       <template v-else-if="sessionStore.isVolunteerLoggedIn">
-        <div
-          class="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black select-none shadow-2xs"
-          title="현재 활동 봉사자"
-        >
-          <span>{{ sessionStore.volunteerName }}</span>
+        <div class="flex items-center gap-1.5">
+          <div
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black select-none shadow-2xs"
+            title="현재 활동 봉사자"
+          >
+            <span>{{ sessionStore.volunteerName }}</span>
+          </div>
+
+          <!-- 비밀번호 변경 버튼 -->
+          <button
+            type="button"
+            @click="isPasswordModalOpen = true"
+            class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border border-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            title="비밀번호 변경"
+          >
+            <KeyRound class="w-3.5 h-3.5" />
+          </button>
+
+          <!-- 봉사자 로그아웃 버튼 (클릭 시 첫 화면으로 즉시 이동) -->
+          <button
+            type="button"
+            @click="handleVolunteerLogout"
+            class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            title="로그아웃 (첫 화면으로 이동)"
+          >
+            <LogOut class="w-3.5 h-3.5" />
+          </button>
         </div>
       </template>
     </div>
+
+    <!-- Password Change Modal -->
+    <PasswordChangeModal
+      :is-open="isPasswordModalOpen"
+      @close="isPasswordModalOpen = false"
+    />
   </header>
 </template>

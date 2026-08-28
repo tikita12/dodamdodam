@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Mail,
   KeyRound,
+  X,
 } from '@lucide/vue'
 
 const router = useRouter()
@@ -23,6 +24,9 @@ const sessionStore = useSessionStore()
 
 // 활성 탭 ('login' | 'register')
 const activeTab = ref<'login' | 'register'>('login')
+
+// 비밀번호 분실 안내 모달 상태
+const showForgotModal = ref(false)
 
 // 로그인 폼 상태
 const loginName = ref('')
@@ -184,10 +188,19 @@ async function handleRegister() {
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <Lock class="w-3.5 h-3.5 text-slate-400" />
-                <span>비밀번호</span>
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <Lock class="w-3.5 h-3.5 text-slate-400" />
+                  <span>비밀번호</span>
+                </label>
+                <button
+                  type="button"
+                  @click="showForgotModal = true"
+                  class="text-[11px] font-bold text-slate-400 hover:text-emerald-700 hover:underline transition cursor-pointer"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+              </div>
               <input
                 v-model="loginPassword"
                 type="password"
@@ -197,29 +210,29 @@ async function handleRegister() {
               />
             </div>
 
-            <button
-              type="submit"
-              :disabled="isLoggingIn"
-              class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer mt-2"
-            >
-              <Loader2 v-if="isLoggingIn" class="w-4 h-4 animate-spin" />
-              <template v-else>
-                <span>자원봉사자 일정 입장하기</span>
-                <ArrowRight class="w-4 h-4" />
-              </template>
-            </button>
-          </form>
+          <button
+            type="submit"
+            :disabled="isLoggingIn"
+            class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer mt-2"
+          >
+            <Loader2 v-if="isLoggingIn" class="w-4 h-4 animate-spin" />
+            <template v-else>
+              <span>자원봉사자 일정 입장하기</span>
+              <ArrowRight class="w-4 h-4" />
+            </template>
+          </button>
+        </form>
 
-          <div class="text-center pt-1">
-            <button
-              type="button"
-              @click="activeTab = 'register'; loginError = ''"
-              class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
-            >
-              처음 방문하셨나요? 봉사자 등록 신청하기 →
-            </button>
-          </div>
+        <div class="text-center pt-1">
+          <button
+            type="button"
+            @click="activeTab = 'register'; loginError = ''"
+            class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
+          >
+            처음 방문하셨나요? 봉사자 등록 신청하기 →
+          </button>
         </div>
+      </div>
 
         <!-- ==================== TAB 2: REGISTER (PENDING) ==================== -->
         <div v-else class="space-y-3.5 animate-in fade-in duration-150">
@@ -358,6 +371,50 @@ async function handleRegister() {
           <Mail class="w-3 h-3 inline" />
           <span>bshine530@gmail.com</span>
         </a>
+      </div>
+    </div>
+
+    <!-- Forgot Password Info Modal -->
+    <div
+      v-if="showForgotModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+    >
+      <div class="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 flex flex-col space-y-3.5 text-left">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <KeyRound class="w-4 h-4" />
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 leading-tight">비밀번호를 분실하셨나요?</h3>
+              <p class="text-[11px] text-slate-400">비밀번호 재설정 안내</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="showForgotModal = false"
+            class="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="space-y-2 text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 font-medium">
+          <p>
+            🔒 도담도담은 보안과 신원 보호를 위해 <strong class="text-slate-800">관리자 확인 후 비밀번호 초기화</strong>를 지원하고 있습니다.
+          </p>
+          <p>
+            담당 관리자에게 말씀해 주시면, 관리자 화면에서 <strong class="text-emerald-700">1초 만에 새 비밀번호(임시번호)로 즉시 재설정</strong>해 드립니다.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          @click="showForgotModal = false"
+          class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition active:scale-98 cursor-pointer shadow-sm"
+        >
+          확인했습니다
+        </button>
       </div>
     </div>
   </div>

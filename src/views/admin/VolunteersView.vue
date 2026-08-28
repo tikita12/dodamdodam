@@ -7,6 +7,7 @@ import {
   removeVolunteer,
   approveVolunteer,
   rejectVolunteer,
+  resetVolunteerPasswordByAdmin,
 } from '@/services/volunteerService'
 import type { Volunteer } from '@/types'
 import { toDayjs } from '@/utils/datetime'
@@ -22,6 +23,7 @@ import {
   X,
   UserCheck,
   BellRing,
+  KeyRound,
 } from '@lucide/vue'
 
 // 활성 탭 ('pending' | 'approved')
@@ -110,6 +112,28 @@ async function handleReject(v: Volunteer) {
     }, 2500)
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : '반려 처리 중 오류가 발생했습니다.'
+  }
+}
+
+// 관리자: 비밀번호 재설정/초기화
+async function handleResetPassword(v: Volunteer) {
+  const newPw = prompt(`'${v.name}' 봉사자의 새 비밀번호를 4자리 이상 입력해주세요:`, '0000')
+  if (!newPw) return
+
+  const trimmed = newPw.trim()
+  if (trimmed.length < 4) {
+    alert('비밀번호는 4자리 이상이어야 합니다.')
+    return
+  }
+
+  try {
+    await resetVolunteerPasswordByAdmin(v.id, trimmed)
+    successMessage.value = `'${v.name}' 봉사자의 비밀번호가 '${trimmed}'(으)로 재설정되었습니다.`
+    setTimeout(() => {
+      successMessage.value = ''
+    }, 3500)
+  } catch (err) {
+    alert(err instanceof Error ? err.message : '비밀번호 재설정 중 오류가 발생했습니다.')
   }
 }
 
@@ -315,14 +339,26 @@ async function handleRemove(v: Volunteer) {
               <span>{{ v.name }}</span>
               <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">활동중</span>
             </div>
-            <button
-              type="button"
-              @click="handleRemove(v)"
-              class="w-7 h-7 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
-              title="봉사자 삭제"
-            >
-              <Trash2 class="w-3.5 h-3.5" />
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                @click="handleResetPassword(v)"
+                class="px-2.5 py-1 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-600 hover:text-amber-700 rounded-xl text-[11px] font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-2xs"
+                title="비밀번호 초기화 / 임시 비밀번호 설정"
+              >
+                <KeyRound class="w-3 h-3 text-amber-500" />
+                <span>비번 재설정</span>
+              </button>
+
+              <button
+                type="button"
+                @click="handleRemove(v)"
+                class="w-7 h-7 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                title="봉사자 삭제"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
