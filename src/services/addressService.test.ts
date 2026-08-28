@@ -22,7 +22,20 @@ describe('addressService tests (실시간 도로명 주소 및 좌표 연동)', 
     expect(results[0].lng).toBeCloseTo(129.1764, 2)
   })
 
-  it('곰내 키워드만으로도 곰내유치원이 검색되어야 한다', async () => {
+  it('마산무학여자중학교 및 무학여중 검색 시 즉시 도로명 주소와 위도/경도가 매칭되어야 한다', async () => {
+    const r1 = await searchPlacesLive('마산무학여자중학교')
+    expect(r1.length).toBeGreaterThan(0)
+    expect(r1[0].name).toBe('마산무학여자중학교')
+    expect(r1[0].address).toContain('경상남도 창원시 마산회원구 회원동북로 49')
+    expect(r1[0].lat).toBeCloseTo(35.2215, 2)
+    expect(r1[0].lng).toBeCloseTo(128.5672, 2)
+
+    const r2 = await searchPlacesLive('무학여중')
+    expect(r2.length).toBeGreaterThan(0)
+    expect(r2[0].name).toBe('마산무학여자중학교')
+  })
+
+  it('곰내 키워드만으로도 곰내유치원이 검색되어야 한다', () => {
     const list = queryKoreaSchoolsDB('곰내')
     expect(list.length).toBeGreaterThan(0)
     expect(list[0].name).toBe('곰내유치원')
