@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getScheduleById, updateSchedule } from '@/services/scheduleService'
 import { subscribeSubjects } from '@/services/subjectService'
+import { searchPlacesLive, geocodeAddress, openDaumPostcodePopup, type PlaceSearchResult } from '@/services/addressService'
 import type { Subject, ScheduleFormData } from '@/types'
 import { toDayjs } from '@/utils/datetime'
 import {
@@ -18,9 +19,8 @@ import {
   AlertCircle,
   Search,
   Sparkles,
+  CheckCircle2,
 } from '@lucide/vue'
-
-import { findSchoolPreset, searchSchoolPresets, type SchoolPreset } from '@/utils/schoolPresets'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,40 +41,88 @@ const formData = ref<ScheduleFormData>({
   note: '',
 })
 
-const showSchoolSuggestions = ref(false)
-const schoolSuggestions = computed(() => {
-  return searchSchoolPresets(formData.value.schoolName)
-})
+// 실시간 전국 학교/장소 검색 상태
+const liveSchoolResults = ref<PlaceSearchResult[]>([])
+const isSearchingSchool = ref(false)
+const showSchoolDropdown = ref(false)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
-function selectSchoolPreset(preset: SchoolPreset) {
-  formData.value.schoolName = preset.name
-  formData.value.address = preset.address
-  formData.value.latitude = preset.lat
-  formData.value.longitude = preset.lng
-  showSchoolSuggestions.value = false
-}
-
+// 학교명 입력/변경 시 실시간 도로명 주소 & 좌표 자동 검색 (전국 모든 학교 지원)
 function handleSchoolNameInput() {
   const trimmed = formData.value.schoolName.trim()
-  if (!trimmed) {
-    formData.value.address = ''
-    formData.value.latitude = undefined
-    formData.value.longitude = undefined
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+
+  if (!trimmed || trimmed.length < 2) {
+    liveSchoolResults.value = []
+    showSchoolDropdown.value = false
     return
   }
 
-  showSchoolSuggestions.value = true
+  isSearchingSchool.value = true
+  showSchoolDropdown.value = true
 
-  const preset = findSchoolPreset(trimmed)
-  if (preset) {
-    formData.value.address = preset.address
-    formData.value.latitude = preset.lat
-    formData.value.longitude = preset.lng
-  } else {
-    // 새로운 학교명 입력 시 이전 학교 주소가 남지 않도록 즉시 갱신
-    formData.value.address = trimmed
-    formData.value.latitude = undefined
-    formData.value.longitude = undefined
+  searchDebounceTimer = setTimeout(async () => {
+    try {
+      const results = await searchPlacesLive(trimmed)
+      liveSchoolResults.value = results
+
+      if (results.length > 0) {
+        const first = results[0]
+        formData.value.address = first.address
+        formData.value.latitude = first.lat
+        formData.value.longitude = first.lng
+      } else {
+        formData.value.address = trimmed
+        formData.value.latitude = undefined
+        formData.value.longitude = undefined
+      }
+    } catch {
+      liveSchoolResults.value = []
+    } finally {
+      isSearchingSchool.value = false
+    }
+  }, 300)
+}
+
+function selectLivePlace(place: PlaceSearchResult) {
+  formData.value.schoolName = place.name
+  formData.value.address = place.address
+  formData.value.latitude = place.lat
+  formData.value.longitude = place.lng
+  showSchoolDropdown.value = false
+}
+
+// 다음 공식 우편번호 및 도로명 주소 팝업 실행
+async function handleOpenPostcode() {
+  try {
+    await openDaumPostcodePopup((result) => {
+      const fullAddr = result.buildingName
+        ? `${result.roadAddress} (${result.buildingName})`
+        : result.roadAddress
+
+      formData.value.address = fullAddr
+      if (result.lat && result.lng) {
+        formData.value.latitude = result.lat
+        formData.value.longitude = result.lng
+      }
+      if (result.buildingName && !formData.value.schoolName) {
+        formData.value.schoolName = result.buildingName
+      }
+    })
+  } catch (err) {
+    alert(err instanceof Error ? err.message : '주소 검색을 불러오지 못했습니다.')
+  }
+}
+
+// 주소창 수동 변경 시 자동 좌표 지오코딩
+async function handleAddressBlur() {
+  const addr = formData.value.address.trim()
+  if (!addr) return
+
+  const coords = await geocodeAddress(addr)
+  if (coords) {
+    formData.value.latitude = coords.lat
+    formData.value.longitude = coords.lng
   }
 }
 
@@ -84,11 +132,6 @@ const customSubjectText = ref('')
 const isLoading = ref(true)
 const isSaving = ref(false)
 const errorMessage = ref('')
-
-// 카카오 장소 검색 보조
-const searchAddressKeyword = ref('')
-const searchResults = ref<{ placeName: string; addressName: string; lat: number; lng: number }[]>([])
-const isSearchingPlace = ref(false)
 
 let unsubscribeSubjects: (() => void) | null = null
 
@@ -155,60 +198,6 @@ function handleSubjectChange(e: Event) {
   }
 }
 
-// 카카오 장소 검색
-function searchKakaoPlaces() {
-  const q = searchAddressKeyword.value.trim()
-  if (!q) return
-
-  const kakao = (window as unknown as {
-    kakao?: {
-      maps?: {
-        services?: {
-          Places: new () => {
-            keywordSearch: (
-              keyword: string,
-              callback: (result: Array<{ place_name: string; address_name: string; road_address_name: string; y: string; x: string }>, status: string) => void
-            ) => void
-          }
-          Status: { OK: string }
-        }
-      }
-    }
-  }).kakao
-
-  if (!kakao?.maps?.services?.Places) {
-    formData.value.address = q
-    searchResults.value = []
-    return
-  }
-
-  isSearchingPlace.value = true
-  const ps = new kakao.maps.services.Places()
-  ps.keywordSearch(q, (data, status) => {
-    isSearchingPlace.value = false
-    if (status === kakao.maps!.services!.Status.OK) {
-      searchResults.value = data.slice(0, 5).map((item) => ({
-        placeName: item.place_name,
-        addressName: item.road_address_name || item.address_name,
-        lat: parseFloat(item.y),
-        lng: parseFloat(item.x),
-      }))
-    } else {
-      searchResults.value = []
-    }
-  })
-}
-
-function selectPlace(place: { placeName: string; addressName: string; lat: number; lng: number }) {
-  formData.value.address = `${place.addressName} (${place.placeName})`
-  formData.value.latitude = place.lat
-  formData.value.longitude = place.lng
-  if (!formData.value.schoolName) {
-    formData.value.schoolName = place.placeName
-  }
-  searchResults.value = []
-}
-
 async function handleSubmit() {
   errorMessage.value = ''
 
@@ -218,6 +207,15 @@ async function handleSubmit() {
       return
     }
     formData.value.subject = customSubjectText.value.trim()
+  }
+
+  // 좌표가 없는 경우 주소 기반 지오코딩 최종 확인
+  if (!formData.value.latitude && formData.value.address) {
+    const coords = await geocodeAddress(formData.value.address)
+    if (coords) {
+      formData.value.latitude = coords.lat
+      formData.value.longitude = coords.lng
+    }
   }
 
   isSaving.value = true
@@ -249,7 +247,7 @@ function handleFormKeyDown(e: KeyboardEvent) {
       </div>
       <div>
         <h2 class="text-base font-black text-slate-900 tracking-tight">봉사 일정 수정</h2>
-        <p class="text-xs text-slate-400">일정 기본 정보 및 장소/정원 변경</p>
+        <p class="text-xs text-slate-400">전국 모든 학교명을 입력하면 도로명 주소와 지도 좌표가 자동 매칭됩니다</p>
       </div>
     </div>
 
@@ -273,52 +271,59 @@ function handleFormKeyDown(e: KeyboardEvent) {
       
       <!-- Card 1: School & Subject -->
       <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3.5">
-        <!-- School Name with Autocomplete Dropdown -->
+        <!-- School Name with Live Autocomplete -->
         <div class="relative">
           <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
             <span class="flex items-center gap-1">
               <School class="w-3.5 h-3.5 text-slate-400" />
               <span>학교/유치원명 <strong class="text-rose-500">*</strong></span>
             </span>
-            <span class="text-[10px] text-blue-600 font-bold flex items-center gap-0.5">
-              <Sparkles class="w-3 h-3 fill-blue-600" /> 주소 실시간 연동
+            <span class="text-[10px] text-blue-600 font-bold flex items-center gap-1">
+              <Sparkles class="w-3 h-3 fill-blue-600" />
+              <span>도로명 주소 & 좌표 실시간 매칭</span>
             </span>
           </label>
-          <input
-            v-model="formData.schoolName"
-            @input="handleSchoolNameInput"
-            @focus="showSchoolSuggestions = true"
-            type="text"
-            required
-            placeholder="예: 봉림초등학교 또는 가람유치원"
-            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-          />
+          <div class="relative">
+            <input
+              v-model="formData.schoolName"
+              @input="handleSchoolNameInput"
+              @focus="liveSchoolResults.length > 0 && (showSchoolDropdown = true)"
+              type="text"
+              required
+              placeholder="전국 학교/유치원명 입력 (예: 봉림초, 해남서초등학교, 감계초등)"
+              class="w-full pl-3.5 pr-9 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+            />
+            <div v-if="isSearchingSchool" class="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 class="w-4 h-4 animate-spin text-blue-600" />
+            </div>
+          </div>
 
-          <!-- Quick School Suggestions Dropdown -->
+          <!-- Real-Time Search Results Dropdown -->
           <div
-            v-if="showSchoolSuggestions && schoolSuggestions.length > 0"
-            class="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white border border-blue-200 rounded-2xl shadow-xl p-2 space-y-1 max-h-48 overflow-y-auto"
+            v-if="showSchoolDropdown && liveSchoolResults.length > 0"
+            class="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white border border-blue-200 rounded-2xl shadow-xl p-2 space-y-1 max-h-56 overflow-y-auto"
           >
             <div class="px-2 py-1 text-[10px] font-bold text-blue-700 flex items-center justify-between border-b border-slate-100">
-              <span>💡 추천 학교/유치원 (클릭 시 주소 자동완성)</span>
-              <button type="button" @mousedown.prevent="showSchoolSuggestions = false" class="text-slate-400 hover:text-slate-600">✕</button>
+              <span>🔍 전국 실시간 검색 결과 (클릭 시 도로명 주소/좌표 자동완성)</span>
+              <button type="button" @mousedown.prevent="showSchoolDropdown = false" class="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <button
-              v-for="preset in schoolSuggestions"
-              :key="preset.name"
+              v-for="(item, idx) in liveSchoolResults"
+              :key="idx"
               type="button"
-              @mousedown.prevent="selectSchoolPreset(preset)"
-              class="w-full p-2 text-left hover:bg-blue-50 rounded-xl text-xs transition flex flex-col gap-0.5 cursor-pointer"
+              @mousedown.prevent="selectLivePlace(item)"
+              class="w-full p-2.5 text-left hover:bg-blue-50 rounded-xl text-xs transition flex flex-col gap-0.5 cursor-pointer border border-transparent hover:border-blue-100"
             >
               <div class="font-bold text-slate-900 flex items-center justify-between">
-                <span>{{ preset.name }}</span>
+                <span>{{ item.name }}</span>
                 <span class="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-md">선택</span>
               </div>
-              <span class="text-[10px] text-slate-500 truncate">{{ preset.address }}</span>
+              <span class="text-[10px] text-slate-500 truncate">{{ item.address }}</span>
             </button>
           </div>
         </div>
 
+        <!-- Subject Selector -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
             <BookOpen class="w-3.5 h-3.5 text-slate-400" />
@@ -339,6 +344,7 @@ function handleFormKeyDown(e: KeyboardEvent) {
             <option value="__custom__" :selected="isCustomSubject">+ 직접 입력하기</option>
           </select>
 
+          <!-- Custom subject input -->
           <input
             v-if="isCustomSubject"
             v-model="customSubjectText"
@@ -351,6 +357,7 @@ function handleFormKeyDown(e: KeyboardEvent) {
 
       <!-- Card 2: Date, Time & Personnel -->
       <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3.5">
+        <!-- Date -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
             <Calendar class="w-3.5 h-3.5 text-slate-400" />
@@ -364,6 +371,7 @@ function handleFormKeyDown(e: KeyboardEvent) {
           />
         </div>
 
+        <!-- Time Range Grid -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
@@ -391,6 +399,7 @@ function handleFormKeyDown(e: KeyboardEvent) {
           </div>
         </div>
 
+        <!-- Personnel -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
             <Users class="w-3.5 h-3.5 text-slate-400" />
@@ -407,60 +416,46 @@ function handleFormKeyDown(e: KeyboardEvent) {
         </div>
       </div>
 
-      <!-- Card 3: Address & Location -->
+      <!-- Card 3: Address & Coordinates -->
       <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3">
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span class="flex items-center gap-1">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-700 flex items-center gap-1">
               <MapPin class="w-3.5 h-3.5 text-blue-600" />
-              <span>봉사 장소 주소 <strong class="text-rose-500">*</strong></span>
-            </span>
-            <span class="text-[10px] text-slate-400">직접 수정도 가능</span>
-          </label>
+              <span>봉사 장소 도로명 주소 <strong class="text-rose-500">*</strong></span>
+            </label>
 
-          <div class="flex gap-1.5 mb-2">
-            <div class="relative flex-1">
-              <Search class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                v-model="searchAddressKeyword"
-                type="text"
-                placeholder="다른 장소명 검색 (예: 창원 봉림초)"
-                @keydown.enter.prevent="searchKakaoPlaces"
-                class="w-full pl-8 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <!-- Daum Postcode Search Button -->
             <button
               type="button"
-              @click="searchKakaoPlaces"
-              class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shrink-0 transition cursor-pointer"
+              @click="handleOpenPostcode"
+              class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
             >
-              검색
+              <Search class="w-3 h-3" />
+              <span>도로명 주소 검색</span>
             </button>
           </div>
 
-          <div
-            v-if="searchResults.length > 0"
-            class="mb-2 p-2 bg-slate-50 border border-slate-200 rounded-2xl space-y-1 max-h-36 overflow-y-auto"
-          >
-            <button
-              v-for="(item, idx) in searchResults"
-              :key="idx"
-              type="button"
-              @click="selectPlace(item)"
-              class="w-full p-2 text-left bg-white hover:bg-blue-50 rounded-xl text-xs border border-slate-100 transition block cursor-pointer"
-            >
-              <p class="font-bold text-slate-900">{{ item.placeName }}</p>
-              <p class="text-[10px] text-slate-500 truncate">{{ item.addressName }}</p>
-            </button>
-          </div>
-
+          <!-- Full Address Field -->
           <input
             v-model="formData.address"
+            @blur="handleAddressBlur"
             type="text"
             required
-            placeholder="학교명을 입력하면 주소가 자동 입력됩니다"
-            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+            placeholder="학교명을 입력하면 도로명 주소가 자동으로 완성됩니다"
+            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
           />
+
+          <!-- Coordinate Status Indicator -->
+          <div class="mt-2 flex items-center gap-1.5 text-[11px] font-medium">
+            <span v-if="formData.latitude && formData.longitude" class="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+              <CheckCircle2 class="w-3 h-3 text-blue-600 shrink-0" />
+              <span>지도 좌표 연동됨 (위도 {{ formData.latitude.toFixed(4) }}, 경도 {{ formData.longitude.toFixed(4) }})</span>
+            </span>
+            <span v-else class="text-slate-400">
+              📍 학교명 또는 주소 입력 시 지도 좌표가 자동으로 매칭됩니다.
+            </span>
+          </div>
         </div>
       </div>
 
