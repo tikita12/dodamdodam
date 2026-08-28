@@ -16,7 +16,7 @@ export async function loginAdminWithEmail(email: string, pass: string): Promise<
   if (!pass) throw new Error('비밀번호를 입력해주세요.')
 
   if (!isAllowedAdminEmail(trimmedEmail)) {
-    throw new Error('관리자로 등록된 이메일 계정이 아닙니다. (cwacc@hanmail.net 또는 admin2@dodam.com)')
+    throw new Error('관리자로 등록된 이메일 계정이 아닙니다.')
   }
 
   try {

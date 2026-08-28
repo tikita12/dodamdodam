@@ -3,12 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { loginAdminWithEmail, sendPasswordResetForAdmin } from '@/services/adminAuthService'
-import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info, CheckCircle2, KeyRound } from '@lucide/vue'
+import { Shield, X, Lock, Mail, Loader2, AlertCircle, CheckCircle2, KeyRound } from '@lucide/vue'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
 
-const email = ref('bshine530@gmail.com')
+const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
 const isResetLoading = ref(false)
@@ -64,6 +64,7 @@ async function handleForgotPassword() {
 function handleClose() {
   errorMessage.value = ''
   successMessage.value = ''
+  email.value = ''
   password.value = ''
   sessionStore.closeAdminLoginModal()
 }
@@ -115,12 +116,6 @@ function handleClose() {
           <span class="font-semibold leading-relaxed">{{ successMessage }}</span>
         </div>
 
-        <!-- Info Hint -->
-        <div class="p-2.5 bg-amber-50/80 border border-amber-200/60 rounded-xl text-[11px] text-amber-900 flex items-center gap-1.5 font-medium">
-          <Info class="w-3.5 h-3.5 text-amber-600 shrink-0" />
-          <span>관리자 계정: <strong>bshine530@gmail.com</strong>, <strong>cwacc@hanmail.net</strong></span>
-        </div>
-
         <!-- Email Field -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1.5">관리자 이메일</label>
@@ -130,25 +125,9 @@ function handleClose() {
               v-model="email"
               type="email"
               required
-              placeholder="bshine530@gmail.com 또는 cwacc@hanmail.net"
+              placeholder="관리자 이메일 입력 (예: admin@dodam.com)"
               class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
             />
-          </div>
-          <div class="flex gap-1.5 mt-1.5">
-            <button
-              type="button"
-              @click="email = 'bshine530@gmail.com'"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
-            >
-              bshine530@gmail.com
-            </button>
-            <button
-              type="button"
-              @click="email = 'cwacc@hanmail.net'"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
-            >
-              cwacc@hanmail.net
-            </button>
           </div>
         </div>
 
