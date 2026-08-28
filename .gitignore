@@ -16,7 +16,10 @@ dist-ssr
 *.tsbuildinfo
 .firebase
 
-# Local environment
+# Environment variables
+.env
+.env.*
+!.env.example
 *.local
 .env.local
 
