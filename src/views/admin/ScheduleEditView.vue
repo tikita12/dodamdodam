@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getScheduleById, updateSchedule } from '@/services/scheduleService'
+import { getScheduleById, updateSchedule, deleteSchedulePermanently } from '@/services/scheduleService'
 import { subscribeSubjects } from '@/services/subjectService'
 import { openDaumPostcodePopup } from '@/services/addressService'
+import { useSessionStore } from '@/stores/session'
 import type { Subject, ScheduleFormData } from '@/types'
 import { toDayjs } from '@/utils/datetime'
 import {
@@ -20,6 +21,7 @@ import {
   Search,
   CheckCircle2,
   RotateCcw,
+  Trash2,
 } from '@lucide/vue'
 
 const route = useRoute()
@@ -159,6 +161,27 @@ async function handleSubmit() {
     errorMessage.value = err instanceof Error ? err.message : '일정 정보 수정 중 오류가 발생했습니다.'
   } finally {
     isSaving.value = false
+  }
+}
+
+const sessionStore = useSessionStore()
+const isSuperAdmin = computed(() => sessionStore.adminUser?.email?.toLowerCase() === 'bshine530@gmail.com')
+const isDeleting = ref(false)
+
+async function handleDelete() {
+  if (!confirm(`⚠️ 정말로 '${formData.value.schoolName || '이'}' 일정을 DB에서 영구 삭제하시겠습니까?\n\n(영구 삭제 시 신청자 목록 및 일정이 완전히 삭제됩니다)`)) {
+    return
+  }
+
+  isDeleting.value = true
+  try {
+    await deleteSchedulePermanently(scheduleId.value)
+    alert('일정이 영구 삭제되었습니다.')
+    router.push('/admin')
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : '일정 삭제 중 오류가 발생했습니다.'
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -411,6 +434,20 @@ function handleFormKeyDown(e: KeyboardEvent) {
           class="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition cursor-pointer"
         >
           취소
+        </button>
+        <button
+          v-if="isSuperAdmin"
+          type="button"
+          @click="handleDelete"
+          :disabled="isDeleting"
+          class="py-3.5 px-4 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-extrabold rounded-2xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
+          title="일정 영구 삭제 (최고 관리자 전용)"
+        >
+          <Loader2 v-if="isDeleting" class="w-4 h-4 animate-spin" />
+          <template v-else>
+            <Trash2 class="w-4 h-4 text-rose-500" />
+            <span>영구 삭제</span>
+          </template>
         </button>
         <button
           type="submit"

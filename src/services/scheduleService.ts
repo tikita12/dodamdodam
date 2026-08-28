@@ -7,6 +7,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -779,4 +780,25 @@ export async function adminToggleScheduleConfirm(id: string, currentStatus: stri
 
   return nextStatus
 }
+
+/**
+ * [최고 관리자 전용: bshine530@gmail.com] 일정 영구 완전 삭제
+ */
+export async function deleteSchedulePermanently(id: string) {
+  const idx = localSchedules.findIndex((s) => s.id === id)
+  if (idx !== -1) {
+    localSchedules.splice(idx, 1)
+    saveSchedules()
+    notifyAllScheduleSubscribers()
+  }
+
+  try {
+    const docRef = doc(db, getCollectionPath.schedule(id))
+    await deleteDoc(docRef)
+  } catch (err) {
+    console.error('일정 영구 삭제 실패:', err)
+    throw err
+  }
+}
+
 

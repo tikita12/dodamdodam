@@ -101,7 +101,7 @@ function openMultiModal(day: CalendarDay) {
 </script>
 
 <template>
-  <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+  <div class="bg-white rounded-3xl p-2.5 sm:p-4 shadow-sm border border-slate-100">
     <!-- Calendar Navigation Header -->
     <div class="flex items-center justify-between mb-3 px-1">
       <div class="flex items-center gap-2">
@@ -149,21 +149,21 @@ function openMultiModal(day: CalendarDay) {
     </div>
 
     <!-- Calendar Days Grid -->
-    <div class="grid grid-cols-7 gap-1 pt-2">
+    <div class="grid grid-cols-7 gap-0.5 sm:gap-1 pt-1.5">
       <div
         v-for="(day, idx) in calendarDays"
         :key="idx"
         :class="[
-          'min-h-[78px] p-1 rounded-xl flex flex-col justify-start transition border border-transparent',
+          'min-h-[68px] sm:min-h-[78px] p-0.5 sm:p-1 rounded-xl flex flex-col justify-start transition border border-transparent',
           !day.isCurrentMonth ? 'opacity-35 bg-slate-50/50' : 'bg-slate-50/70 hover:border-emerald-200',
           day.isToday ? 'ring-1.5 ring-emerald-500 bg-emerald-50/30' : ''
         ]"
       >
         <!-- Date Header -->
-        <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center justify-between mb-0.5 sm:mb-1 px-0.5">
           <span
             :class="[
-              'text-[11px] font-bold inline-flex items-center justify-center w-5 h-5 rounded-full',
+              'text-[10px] sm:text-[11px] font-bold inline-flex items-center justify-center w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full',
               day.isToday ? 'bg-emerald-600 text-white shadow-xs font-black' : '',
               !day.isToday && day.isSunday ? 'text-rose-500' : '',
               !day.isToday && day.isSaturday ? 'text-blue-500' : '',
@@ -176,14 +176,14 @@ function openMultiModal(day: CalendarDay) {
           <!-- Schedule Count Dot for small viewports -->
           <span
             v-if="day.schedules.length > 0"
-            class="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-1 rounded-full"
+            class="text-[8px] sm:text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-1 rounded-full leading-tight"
           >
             {{ day.schedules.length }}
           </span>
         </div>
 
         <!-- Schedule Chips inside day cell -->
-        <div class="flex-1 flex flex-col gap-0.5 overflow-hidden">
+        <div class="flex-1 flex flex-col gap-0.5 overflow-hidden w-full">
           <template v-if="day.schedules.length > 0">
             <!-- 1st Schedule Chip -->
             <CalendarChip :schedule="day.schedules[0]" />
@@ -193,7 +193,7 @@ function openMultiModal(day: CalendarDay) {
               v-if="day.schedules.length > 1"
               type="button"
               @click.stop="openMultiModal(day)"
-              class="w-full text-[9px] font-extrabold py-0.5 px-1 bg-slate-200/80 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 rounded transition text-center cursor-pointer active:scale-95"
+              class="w-full text-[8px] sm:text-[9px] font-black py-0.5 px-0.5 bg-slate-200/80 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 rounded transition text-center cursor-pointer active:scale-95 whitespace-nowrap overflow-hidden"
             >
               +{{ day.schedules.length - 1 }}개 더
             </button>

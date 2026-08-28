@@ -4,7 +4,8 @@ import type { Schedule, Volunteer, VolunteerResponse } from '@/types'
 import { formatScheduleDateTime } from '@/utils/datetime'
 import { computeScheduleStatus } from '@/utils/status'
 import { subscribeScheduleResponses } from '@/services/applicationService'
-import { adminCancelSchedule, adminToggleScheduleConfirm } from '@/services/scheduleService'
+import { adminCancelSchedule, adminToggleScheduleConfirm, deleteSchedulePermanently } from '@/services/scheduleService'
+import { useSessionStore } from '@/stores/session'
 import AdminParticipantManager from './AdminParticipantManager.vue'
 import {
   Calendar,
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   Undo2,
   Ban,
+  Trash2,
   Loader2,
   MapPin,
   FileText,
@@ -24,10 +26,14 @@ const props = defineProps<{
   allVolunteers: Volunteer[]
 }>()
 
+const sessionStore = useSessionStore()
+const isSuperAdmin = computed(() => sessionStore.adminUser?.email?.toLowerCase() === 'bshine530@gmail.com')
+
 const isExpanded = ref(false)
 const responses = ref<VolunteerResponse[]>([])
 const isTogglingConfirm = ref(false)
 const isCancelling = ref(false)
+const isDeleting = ref(false)
 
 let unsubscribe: (() => void) | null = null
 
@@ -74,6 +80,22 @@ async function handleCancelSchedule() {
     console.error(err)
   } finally {
     isCancelling.value = false
+  }
+}
+
+async function handleDeleteSchedule() {
+  if (!confirm(`⚠️ 정말로 '${props.schedule.schoolName}' 일정을 DB에서 영구 삭제하시겠습니까?\n\n(영구 삭제 시 신청자 목록 및 일정이 완전히 삭제됩니다)`)) {
+    return
+  }
+
+  isDeleting.value = true
+  try {
+    await deleteSchedulePermanently(props.schedule.id)
+    alert('일정이 영구 삭제되었습니다.')
+  } catch (err) {
+    alert(err instanceof Error ? err.message : '일정 삭제 중 오류가 발생했습니다.')
+  } finally {
+    isDeleting.value = false
   }
 }
 </script>
@@ -204,6 +226,21 @@ async function handleCancelSchedule() {
           <Loader2 v-if="isCancelling" class="w-3.5 h-3.5 animate-spin" />
           <template v-else>
             <Ban class="w-3.5 h-3.5" /> 취소
+          </template>
+        </button>
+
+        <!-- 4. Permanent Delete Button (Only for bshine530@gmail.com) -->
+        <button
+          v-if="isSuperAdmin"
+          type="button"
+          @click="handleDeleteSchedule"
+          :disabled="isDeleting"
+          class="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer shadow-xs"
+          title="일정 영구 삭제 (최고 관리자 전용)"
+        >
+          <Loader2 v-if="isDeleting" class="w-3.5 h-3.5 animate-spin" />
+          <template v-else>
+            <Trash2 class="w-3.5 h-3.5" /> 삭제
           </template>
         </button>
       </div>

@@ -8,11 +8,18 @@ service cloud.firestore {
         (request.auth.token.email.lower() == "bshine530@gmail.com" || request.auth.token.email.lower() == "cwacc@hanmail.net" || request.auth.token.email.lower() == "admin2@dodam.com");
     }
 
+    // 최고 관리자(bshine530@gmail.com) 검증 함수
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.email != null &&
+        request.auth.token.email.lower() == "bshine530@gmail.com";
+    }
+
     // 일정 컬렉션 (/schedules/{scheduleId})
     match /schedules/{scheduleId} {
       allow read: if true;
       allow create: if isAdmin();
-      allow delete: if false; // 실제 문서 삭제 방지 (status: 'cancelled' 상태 변경으로 데이터 보존)
+      // 삭제 권한: 최고 관리자(bshine530@gmail.com)는 DB 영구 삭제 허용
+      allow delete: if isSuperAdmin();
 
       // 수정 권한:
       // 1) 관리자는 모든 필드 수정 허용 (확정, 정보 수정, 정원 초과 수동 추가/제거, 취소 등)
