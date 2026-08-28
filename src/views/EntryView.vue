@@ -230,25 +230,39 @@ function handleEnter() {
           :disabled="!selectedVolunteerId"
           class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
         >
-          <span>일정 확인 및 입장하기</span>
+          <span>자원봉사자 일정 입장하기</span>
           <ArrowRight class="w-4 h-4" />
+        </button>
+      </div>
+
+      <!-- Divider: Section Separator -->
+      <div class="w-full flex items-center gap-3 my-5">
+        <div class="flex-1 h-px bg-slate-200/80"></div>
+        <span class="text-[11px] font-bold text-slate-400">또는</span>
+        <div class="flex-1 h-px bg-slate-200/80"></div>
+      </div>
+
+      <!-- Admin Section: Same Sized Button -->
+      <div class="w-full bg-white p-4 rounded-3xl shadow-sm border border-amber-100/80 text-left space-y-2.5">
+        <div class="flex items-center gap-1.5 px-1">
+          <Shield class="w-3.5 h-3.5 text-amber-500" />
+          <span class="text-xs font-extrabold text-slate-700">관리자 전용</span>
+        </div>
+
+        <button
+          type="button"
+          @click="sessionStore.openAdminLoginModal"
+          class="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold rounded-2xl shadow-md shadow-amber-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
+        >
+          <Shield class="w-4 h-4" />
+          <span>관리자 대시보드 로그인</span>
         </button>
       </div>
 
     </div>
 
-    <!-- Bottom Footer: Admin Link & Developer Contact -->
-    <div class="text-center py-3 border-t border-slate-200/60 mt-auto space-y-2">
-      <div>
-        <button
-          type="button"
-          @click="sessionStore.openAdminLoginModal"
-          class="text-xs text-slate-500 hover:text-slate-800 font-bold inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-        >
-          <Shield class="w-3.5 h-3.5 text-amber-500" />
-          <span>관리자 로그인</span>
-        </button>
-      </div>
+    <!-- Bottom Footer: Developer Contact -->
+    <div class="text-center py-3 border-t border-slate-200/60 mt-auto">
       <div class="text-[11px] text-slate-400 font-medium">
         <span>개발자 문의: </span>
         <a
