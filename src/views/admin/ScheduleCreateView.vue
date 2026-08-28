@@ -248,20 +248,10 @@ function handleFormKeyDown(e: KeyboardEvent) {
               <School class="w-3.5 h-3.5 text-slate-400" />
               <span>학교/유치원명 <strong class="text-rose-500">*</strong></span>
             </label>
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] text-emerald-600 font-bold hidden sm:flex items-center gap-1">
-                <Sparkles class="w-3 h-3 fill-emerald-600" />
-                <span>실시간 주소 연동</span>
-              </span>
-              <button
-                type="button"
-                @click="handleOpenPostcode"
-                class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-              >
-                <Search class="w-3 h-3" />
-                <span>주소/학교 검색</span>
-              </button>
-            </div>
+            <span class="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+              <Sparkles class="w-3 h-3 fill-emerald-600" />
+              <span>실시간 주소 연동</span>
+            </span>
           </div>
           <div class="relative">
             <input
@@ -270,12 +260,25 @@ function handleFormKeyDown(e: KeyboardEvent) {
               @focus="liveSchoolResults.length > 0 && (showSchoolDropdown = true)"
               type="text"
               required
-              placeholder="전국 학교/유치원명 입력 (예: 봉림초, 해남서초등학교, 감계초등)"
+              placeholder="전국 학교/유치원명 입력 (예: 밝은별명성유치원, 곰내유치원, 봉림초등)"
               class="w-full pl-3.5 pr-9 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
             />
             <div v-if="isSearchingSchool" class="absolute right-3 top-1/2 -translate-y-1/2">
               <Loader2 class="w-4 h-4 animate-spin text-emerald-600" />
             </div>
+          </div>
+
+          <!-- School/Address Search Button placed under school name input -->
+          <div class="flex items-center justify-between mt-2 pt-0.5">
+            <span class="text-[11px] text-slate-400 font-medium">검색어 자동완성 또는 직접 검색:</span>
+            <button
+              type="button"
+              @click="handleOpenPostcode"
+              class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer border border-emerald-200/60 shadow-2xs"
+            >
+              <Search class="w-3.5 h-3.5" />
+              <span>주소/학교 검색</span>
+            </button>
           </div>
 
           <!-- Real-Time Search Results Dropdown -->
