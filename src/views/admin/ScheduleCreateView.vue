@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createSchedule } from '@/services/scheduleService'
 import { subscribeSubjects } from '@/services/subjectService'
@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from '@lucide/vue'
 import dayjs from 'dayjs'
+import { findSchoolPreset, searchSchoolPresets, type SchoolPreset } from '@/utils/schoolPresets'
 
 const router = useRouter()
 
@@ -36,57 +37,43 @@ const formData = ref<ScheduleFormData>({
   note: '',
 })
 
-// 주요 학교/유치원 주소 및 좌표 프리셋 DB (스마트 자동완성)
-const SCHOOL_ADDRESS_PRESETS: Record<string, { address: string; lat: number; lng: number }> = {
-  '감계초등학교 병설유치원': { address: '경남 창원시 의창구 북면 감계로 110번길 33', lat: 35.3121, lng: 128.5982 },
-  '창원꽃무지풀무지유치원': { address: '경남 창원시 의창구 남산로 27번길 16', lat: 35.2573, lng: 128.6214 },
-  '봉림초등학교': { address: '경남 창원시 의창구 봉림서로 31', lat: 35.2536, lng: 128.6751 },
-  '가람유치원': { address: '경남 창원시 성산구 동산로 124번길 18', lat: 35.2198, lng: 128.6943 },
-  '명도초등학교': { address: '경남 창원시 의창구 명서로 81번길 15', lat: 35.2482, lng: 128.6431 },
-  '화양초등학교': { address: '경남 창원시 의창구 동읍 화양길 12', lat: 35.2981, lng: 128.6982 },
-  '자여초등학교': { address: '경남 창원시 의창구 동읍 동읍로 15번길 8', lat: 35.2894, lng: 128.6875 },
-  '토월유치원': { address: '경남 창원시 성산구 신월로 42', lat: 35.2281, lng: 128.6892 },
-  '신비하나름유치원': { address: '경남 창원시 마산회원구 구암서4길 19', lat: 35.2341, lng: 128.5912 },
-  '용호유치원': { address: '경남 창원시 성산구 용지로 239번길 18', lat: 35.2312, lng: 128.6811 },
-  '대산초등학교 병설유치원': { address: '경남 창원시 의창구 대산면 진산대로 411', lat: 35.3412, lng: 128.7123 },
-  '신등초등학교': { address: '경남 산청군 신등면 신차로 542', lat: 35.3892, lng: 127.9941 },
-  '바른나무유치원': { address: '경남 창원시 마산회원구 양덕로 97', lat: 35.2285, lng: 128.5834 },
-  '용지초등학교': { address: '경남 창원시 성산구 동산로 185', lat: 35.2251, lng: 128.6914 },
-  '창원남산초등학교': { address: '경남 창원시 의창구 남산로 27', lat: 35.2568, lng: 128.6205 },
-  '북면초등학교': { address: '경남 창원시 의창구 북면 천주로 568', lat: 35.3214, lng: 128.5873 },
-  '창원남산유치원': { address: '경남 창원시 의창구 남산로 27번길 12', lat: 35.2571, lng: 128.6210 },
-  '도솔유치원': { address: '경남 창원시 성산구 사파동 102-1', lat: 35.2210, lng: 128.7012 },
-  '창원한별유치원': { address: '경남 창원시 성산구 반림로 45', lat: 35.2384, lng: 128.6791 },
-  '내동초등학교': { address: '경남 창원시 성산구 충혼로 91', lat: 35.2154, lng: 128.6653 },
-  '라온유치원': { address: '경남 창원시 마산회원구 합성동 293-1', lat: 35.2412, lng: 128.5831 },
-  '양곡초등학교': { address: '경남 창원시 성산구 양곡로 66', lat: 35.1983, lng: 128.6672 },
-  '상남초등학교': { address: '경남 창원시 성산구 상남로 88', lat: 35.2215, lng: 128.6812 },
-  '무학초등학교': { address: '경남 창원시 마산합포구 무학로 45', lat: 35.2012, lng: 128.5634 },
+const showSchoolSuggestions = ref(false)
+const schoolSuggestions = computed(() => {
+  return searchSchoolPresets(formData.value.schoolName)
+})
+
+function selectSchoolPreset(preset: SchoolPreset) {
+  formData.value.schoolName = preset.name
+  formData.value.address = preset.address
+  formData.value.latitude = preset.lat
+  formData.value.longitude = preset.lng
+  showSchoolSuggestions.value = false
 }
 
-// 사용자가 학교명을 입력할 때 주소 자동 완성 & 동기화
-watch(
-  () => formData.value.schoolName,
-  (name) => {
-    const trimmed = name.trim()
-    if (!trimmed) return
-
-    // 1. 프리셋 DB에서 매칭 (정확히 일치하거나 핵심 키워드가 포함되는 경우)
-    for (const [key, val] of Object.entries(SCHOOL_ADDRESS_PRESETS)) {
-      if (key === trimmed || key.includes(trimmed) || (trimmed.length >= 3 && trimmed.includes(key.replace(/초등학교|유치원/g, '')))) {
-        formData.value.address = val.address
-        formData.value.latitude = val.lat
-        formData.value.longitude = val.lng
-        return
-      }
-    }
-
-    // 2. 프리셋에 없는 경우: 기본적으로 학교명으로 자동 채움
-    if (!formData.value.address || formData.value.address.length < 5) {
-      formData.value.address = trimmed
-    }
+// 사용자가 학교명을 입력/변경할 때 주소 및 좌표 실시간 동기화
+function handleSchoolNameInput() {
+  const trimmed = formData.value.schoolName.trim()
+  if (!trimmed) {
+    formData.value.address = ''
+    formData.value.latitude = undefined
+    formData.value.longitude = undefined
+    return
   }
-)
+
+  showSchoolSuggestions.value = true
+
+  const preset = findSchoolPreset(trimmed)
+  if (preset) {
+    formData.value.address = preset.address
+    formData.value.latitude = preset.lat
+    formData.value.longitude = preset.lng
+  } else {
+    // 새로운 학교명 입력 시 이전 학교의 주소가 남지 않도록 즉시 갱신
+    formData.value.address = trimmed
+    formData.value.latitude = undefined
+    formData.value.longitude = undefined
+  }
+}
 
 const subjects = ref<Subject[]>([])
 const isCustomSubject = ref(false)
@@ -237,24 +224,50 @@ function handleFormKeyDown(e: KeyboardEvent) {
       
       <!-- Card 1: School & Subject -->
       <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3.5">
-        <!-- School Name -->
-        <div>
+        <!-- School Name with Autocomplete Dropdown -->
+        <div class="relative">
           <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
             <span class="flex items-center gap-1">
               <School class="w-3.5 h-3.5 text-slate-400" />
               <span>학교/유치원명 <strong class="text-rose-500">*</strong></span>
             </span>
             <span class="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
-              <Sparkles class="w-3 h-3 fill-emerald-600" /> 주소 자동입력
+              <Sparkles class="w-3 h-3 fill-emerald-600" /> 주소 실시간 연동
             </span>
           </label>
           <input
             v-model="formData.schoolName"
+            @input="handleSchoolNameInput"
+            @focus="showSchoolSuggestions = true"
             type="text"
             required
             placeholder="예: 봉림초등학교 또는 가람유치원"
             class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
           />
+
+          <!-- Quick School Suggestions Dropdown -->
+          <div
+            v-if="showSchoolSuggestions && schoolSuggestions.length > 0"
+            class="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white border border-emerald-200 rounded-2xl shadow-xl p-2 space-y-1 max-h-48 overflow-y-auto"
+          >
+            <div class="px-2 py-1 text-[10px] font-bold text-emerald-700 flex items-center justify-between border-b border-slate-100">
+              <span>💡 추천 학교/유치원 (클릭 시 주소 자동완성)</span>
+              <button type="button" @mousedown.prevent="showSchoolSuggestions = false" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <button
+              v-for="preset in schoolSuggestions"
+              :key="preset.name"
+              type="button"
+              @mousedown.prevent="selectSchoolPreset(preset)"
+              class="w-full p-2 text-left hover:bg-emerald-50 rounded-xl text-xs transition flex flex-col gap-0.5 cursor-pointer"
+            >
+              <div class="font-bold text-slate-900 flex items-center justify-between">
+                <span>{{ preset.name }}</span>
+                <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md">선택</span>
+              </div>
+              <span class="text-[10px] text-slate-500 truncate">{{ preset.address }}</span>
+            </button>
+          </div>
         </div>
 
         <!-- Subject Selector -->
