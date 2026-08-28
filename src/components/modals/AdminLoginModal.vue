@@ -8,7 +8,7 @@ import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info, CheckCircle2, KeyRou
 const router = useRouter()
 const sessionStore = useSessionStore()
 
-const email = ref('cwacc@hanmail.net')
+const email = ref('bshine530@gmail.com')
 const password = ref('')
 const isLoading = ref(false)
 const isResetLoading = ref(false)
@@ -118,7 +118,7 @@ function handleClose() {
         <!-- Info Hint -->
         <div class="p-2.5 bg-amber-50/80 border border-amber-200/60 rounded-xl text-[11px] text-amber-900 flex items-center gap-1.5 font-medium">
           <Info class="w-3.5 h-3.5 text-amber-600 shrink-0" />
-          <span>관리자 계정: <strong>cwacc@hanmail.net</strong> 또는 <strong>admin2@dodam.com</strong></span>
+          <span>관리자 계정: <strong>bshine530@gmail.com</strong>, <strong>cwacc@hanmail.net</strong></span>
         </div>
 
         <!-- Email Field -->
@@ -130,24 +130,24 @@ function handleClose() {
               v-model="email"
               type="email"
               required
-              placeholder="cwacc@hanmail.net 또는 admin2@dodam.com"
+              placeholder="bshine530@gmail.com 또는 cwacc@hanmail.net"
               class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
             />
           </div>
           <div class="flex gap-1.5 mt-1.5">
             <button
               type="button"
+              @click="email = 'bshine530@gmail.com'"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
+            >
+              bshine530@gmail.com
+            </button>
+            <button
+              type="button"
               @click="email = 'cwacc@hanmail.net'"
               class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
             >
               cwacc@hanmail.net
-            </button>
-            <button
-              type="button"
-              @click="email = 'admin2@dodam.com'"
-              class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition cursor-pointer"
-            >
-              admin2@dodam.com
             </button>
           </div>
         </div>
