@@ -1,9 +1,8 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { registerVolunteer, loginVolunteer, subscribeVolunteers } from '@/services/volunteerService'
-import type { Volunteer } from '@/types'
+import { registerVolunteer, loginVolunteer } from '@/services/volunteerService'
 import {
   HeartHandshake,
   Sparkles,
@@ -19,7 +18,6 @@ import {
   KeyRound,
   X,
   LogOut,
-  ChevronDown,
 } from '@lucide/vue'
 
 const router = useRouter()
@@ -28,56 +26,33 @@ const sessionStore = useSessionStore()
 // 활성 탭 ('login' | 'register')
 const activeTab = ref<'login' | 'register'>('login')
 
-// 승인된 봉사자 목록 (드롭다운용)
-const approvedVolunteers = ref<Volunteer[]>([])
-let unsubscribe: (() => void) | null = null
-
-onMounted(() => {
-  unsubscribe = subscribeVolunteers((list) => {
-    approvedVolunteers.value = list
-  })
-})
-
-onUnmounted(() => {
-  if (unsubscribe) unsubscribe()
-})
-
 // 비밀번호 분실 안내 모달 상태
 const showForgotModal = ref(false)
 
-// 로그인 폼 상태
-const isCustomName = ref(false)
-const selectedName = ref('')
-const customName = ref('')
+// 로그인 폼 상태 (직접 타이핑 입력)
+const loginName = ref('')
 const loginPassword = ref('')
 const isLoggingIn = ref(false)
 const loginError = ref('')
 
-function handleNameSelectChange() {
-  if (selectedName.value === '__custom__') {
-    isCustomName.value = true
-  } else {
-    isCustomName.value = false
-  }
-}
-
 // 로그인 처리
 async function handleLogin() {
   loginError.value = ''
-  const nameToLogin = isCustomName.value ? customName.value.trim() : selectedName.value.trim()
+  const trimmedName = loginName.value.trim()
+  const trimmedPw = loginPassword.value.trim()
 
-  if (!nameToLogin) {
-    loginError.value = '자원봉사자 이름을 선택하거나 입력해주세요.'
+  if (!trimmedName) {
+    loginError.value = '이름을 입력해주세요.'
     return
   }
-  if (!loginPassword.value.trim()) {
+  if (!trimmedPw) {
     loginError.value = '비밀번호를 입력해주세요.'
     return
   }
 
   isLoggingIn.value = true
   try {
-    const vol = await loginVolunteer(nameToLogin, loginPassword.value)
+    const vol = await loginVolunteer(trimmedName, trimmedPw)
     sessionStore.setVolunteer(vol.id, vol.name)
     router.push('/main')
   } catch (err) {
@@ -242,43 +217,14 @@ function handleSwitchAccount() {
           </div>
 
           <form @submit.prevent="handleLogin" class="space-y-3">
-            <!-- Name Selector / Input -->
+            <!-- Name Input (직접 타이핑) -->
             <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1">
-                  <UserCheck class="w-3.5 h-3.5 text-slate-400" />
-                  <span>자원봉사자 이름</span>
-                </label>
-                <button
-                  type="button"
-                  @click="isCustomName = !isCustomName"
-                  class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
-                >
-                  {{ isCustomName ? '명단에서 선택' : '직접 입력하기' }}
-                </button>
-              </div>
-
-              <!-- Dropdown mode -->
-              <div v-if="!isCustomName" class="relative">
-                <select
-                  v-model="selectedName"
-                  @change="handleNameSelectChange"
-                  required
-                  class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white appearance-none transition cursor-pointer"
-                >
-                  <option value="" disabled>봉사자 이름을 선택해주세요</option>
-                  <option v-for="v in approvedVolunteers" :key="v.id" :value="v.name">
-                    {{ v.name }}
-                  </option>
-                  <option value="__custom__">✏️ 직접 이름 입력하기...</option>
-                </select>
-                <ChevronDown class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              <!-- Direct input mode -->
+              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                <UserCheck class="w-3.5 h-3.5 text-slate-400" />
+                <span>자원봉사자 이름</span>
+              </label>
               <input
-                v-else
-                v-model="customName"
+                v-model="loginName"
                 type="text"
                 required
                 placeholder="본인 실명 입력 (예: 홍길동)"

@@ -67,7 +67,7 @@ async function handleRemove(sub: Subject) {
 </script>
 
 <template>
-  <div class="p-4 space-y-4 pb-20 animate-in fade-in duration-200">
+  <div class="p-4 space-y-4 pb-20 animate-in fade-in duration-200 w-full max-w-full overflow-hidden">
     
     <!-- Title Header -->
     <div class="flex items-center justify-between px-1">
@@ -100,24 +100,24 @@ async function handleRemove(sub: Subject) {
     </div>
 
     <!-- Add Subject Form Card -->
-    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3 w-full">
       <h3 class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
         <Plus class="w-3.5 h-3.5 text-blue-600" />
         <span>새 교육과목 추가</span>
       </h3>
 
-      <form @submit.prevent="handleAdd" class="flex gap-2">
+      <form @submit.prevent="handleAdd" class="flex items-center gap-2 w-full">
         <input
           v-model="newSubjectName"
           type="text"
           required
           placeholder="과목명 입력 (예: 청소년 도박예방 교육)"
-          class="flex-1 px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+          class="flex-1 min-w-0 px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
         />
         <button
           type="submit"
           :disabled="isSubmitting || !newSubjectName.trim()"
-          class="px-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-2xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          class="shrink-0 px-4 sm:px-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-2xl text-xs font-extrabold shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap"
         >
           <Loader2 v-if="isSubmitting" class="w-3.5 h-3.5 animate-spin" />
           <span v-else>추가</span>
@@ -126,7 +126,7 @@ async function handleRemove(sub: Subject) {
     </div>
 
     <!-- Subjects List Card -->
-    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3 w-full">
       <h3 class="text-xs font-extrabold text-slate-800 flex items-center justify-between">
         <span>등록된 교육과목 목록</span>
         <span class="text-slate-400 font-normal">{{ subjects.length }}개</span>
@@ -147,11 +147,11 @@ async function handleRemove(sub: Subject) {
           :key="sub.id"
           class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex items-center justify-between text-xs font-bold text-slate-800 transition"
         >
-          <span>{{ sub.name }}</span>
+          <span class="truncate pr-2">{{ sub.name }}</span>
           <button
             type="button"
             @click="handleRemove(sub)"
-            class="w-7 h-7 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            class="shrink-0 w-7 h-7 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
             title="과목 삭제"
           >
             <Trash2 class="w-3.5 h-3.5" />

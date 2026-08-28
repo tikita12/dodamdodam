@@ -294,18 +294,18 @@ async function handleRemove(v: Volunteer) {
           <span>새 봉사자 직접 추가 (즉시 승인)</span>
         </h3>
 
-        <form @submit.prevent="handleAdd" class="flex gap-2">
+        <form @submit.prevent="handleAdd" class="flex items-center gap-2 w-full">
           <input
             v-model="newVolunteerName"
             type="text"
             required
             placeholder="봉사자 실명 입력 (예: 홍길동)"
-            class="flex-1 px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+            class="flex-1 min-w-0 px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
           />
           <button
             type="submit"
             :disabled="isSubmitting || !newVolunteerName.trim()"
-            class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-2xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+            class="shrink-0 px-4 sm:px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-2xl text-xs font-extrabold shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap"
           >
             <Loader2 v-if="isSubmitting" class="w-3.5 h-3.5 animate-spin" />
             <span v-else>추가</span>
