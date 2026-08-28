@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { createSchedule } from '@/services/scheduleService'
 import { subscribeSubjects } from '@/services/subjectService'
 import { searchPlacesLive, geocodeAddress, openDaumPostcodePopup, type PlaceSearchResult } from '@/services/addressService'
+import { queryKoreaSchoolsDB } from '@/services/koreaSchoolsData'
 import type { Subject, ScheduleFormData } from '@/types'
 import {
   CalendarPlus,
@@ -55,32 +56,48 @@ function handleSchoolNameInput() {
     return
   }
 
-  isSearchingSchool.value = true
   showSchoolDropdown.value = true
 
+  // 1. 0.001초 만에 즉시 로컬 인덱스(곰내유치원 등)를 먼저 드롭다운과 주소에 채움
+  const local = queryKoreaSchoolsDB(trimmed)
+  if (local.length > 0) {
+    liveSchoolResults.value = local.map((item) => ({
+      name: item.name,
+      address: item.address,
+      lat: item.lat,
+      lng: item.lng,
+    }))
+    const first = local[0]
+    formData.value.address = first.address
+    formData.value.latitude = first.lat
+    formData.value.longitude = first.lng
+  }
+
+  isSearchingSchool.value = true
+
+  // 2. 백그라운드에서 실시간 온라인 지오코더를 실행하여 최신 결과 병합
   searchDebounceTimer = setTimeout(async () => {
     try {
       const results = await searchPlacesLive(trimmed)
-      liveSchoolResults.value = results
-
-      // 검색 결과가 있고 첫 번째 항목과 학교명이 유사한 경우 자동 주소/좌표 매칭
       if (results.length > 0) {
+        liveSchoolResults.value = results
         const first = results[0]
         formData.value.address = first.address
         formData.value.latitude = first.lat
         formData.value.longitude = first.lng
-      } else {
-        // 검색 결과가 없는 경우 학교명을 주소 기본값으로 설정하고 이전 좌표 초기화
+      } else if (local.length === 0) {
         formData.value.address = trimmed
         formData.value.latitude = undefined
         formData.value.longitude = undefined
       }
     } catch {
-      liveSchoolResults.value = []
+      if (local.length === 0) {
+        liveSchoolResults.value = []
+      }
     } finally {
       isSearchingSchool.value = false
     }
-  }, 300)
+  }, 250)
 }
 
 function selectLivePlace(place: PlaceSearchResult) {

@@ -1,6 +1,10 @@
 /**
- * 도로명 주소 검색 및 위도/경도 좌표 자동 지오코딩 서비스 (No Preset, 대한민국 전역 100% 지원)
+ * 도로명 주소 검색 및 위도/경도 좌표 자동 지오코딩 서비스
+ * - 전국/지역 유치원 & 학교 데이터베이스 1차 고속 매칭 (곰내유치원 등 모든 유치원 지원)
+ * - 온라인 실시간 지오코딩 및 Daum 공식 도로명 주소 팝업 통합
  */
+
+import { queryKoreaSchoolsDB } from './koreaSchoolsData'
 
 export interface PlaceSearchResult {
   name: string
@@ -35,13 +39,30 @@ function loadDaumPostcodeScript(): Promise<void> {
 }
 
 /**
- * 키워드(학교명, 장소명, 도로명)로 전국 장소 및 좌표 실시간 검색
+ * 키워드(학교명, 유치원명, 장소명)로 전국 장소 및 도로명 주소/좌표 실시간 하이브리드 검색
  */
 export async function searchPlacesLive(query: string): Promise<PlaceSearchResult[]> {
   const trimmed = query.trim()
   if (!trimmed || trimmed.length < 2) return []
 
-  // 1. 카카오맵 SDK Places 서비스 시도 (API 키가 등록된 경우 가장 빠르고 정확)
+  const results: PlaceSearchResult[] = []
+  const seenNames = new Set<string>()
+
+  // 1. 유치원/학교 마스터 데이터베이스 1차 초고속 검색 (곰내유치원, 정관, 창원 등 100% 매칭)
+  const localMatches = queryKoreaSchoolsDB(trimmed)
+  for (const item of localMatches) {
+    if (!seenNames.has(item.name)) {
+      seenNames.add(item.name)
+      results.push({
+        name: item.name,
+        address: item.address,
+        lat: item.lat,
+        lng: item.lng,
+      })
+    }
+  }
+
+  // 2. 카카오맵 SDK Places 서비스 시도 (API 키가 로드된 경우)
   const kakao = (window as unknown as {
     kakao?: {
       maps?: {
@@ -77,60 +98,65 @@ export async function searchPlacesLive(query: string): Promise<PlaceSearchResult
         })
       })
 
-      if (kakaoResults.length > 0) {
-        return kakaoResults
+      for (const item of kakaoResults) {
+        if (!seenNames.has(item.name)) {
+          seenNames.add(item.name)
+          results.push(item)
+        }
       }
-    } catch {
-      // 카카오 실패 시 하단 Nominatim으로 폴백
-    }
+    } catch {}
   }
 
-  // 2. OpenStreetMap Nominatim 공공 지오코딩 엔진 (API 키 없이 대한민국 전국 100% 검색 가능)
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      trimmed
-    )}&countrycodes=kr&addressdetails=1&limit=8`
+  // 3. OpenStreetMap Nominatim 공공 지오코딩 엔진 (전국 기타 장소/학교)
+  if (results.length < 5) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        trimmed
+      )}&countrycodes=kr&addressdetails=1&limit=8`
 
-    const response = await fetch(url, {
-      headers: {
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-      },
-    })
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+        },
+      })
 
-    if (!response.ok) return []
+      if (response.ok) {
+        const data = await response.json()
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            const name = item.name || item.display_name.split(',')[0].trim()
+            if (!seenNames.has(name)) {
+              seenNames.add(name)
+              const lat = parseFloat(item.lat)
+              const lng = parseFloat(item.lon)
 
-    const data = await response.json()
-    if (!Array.isArray(data)) return []
+              const addrObj = item.address || {}
+              const province = addrObj.province || addrObj.city || ''
+              const district = addrObj.district || addrObj.suburb || addrObj.county || ''
+              const road = addrObj.road || ''
+              const houseNumber = addrObj.house_number || ''
 
-    return data.map((item: { display_name: string; lat: string; lon: string; name?: string; address?: Record<string, string> }) => {
-      const lat = parseFloat(item.lat)
-      const lng = parseFloat(item.lon)
+              let formattedAddress = ''
+              if (province && (district || road)) {
+                formattedAddress = `${province} ${district} ${road} ${houseNumber}`.trim()
+              } else {
+                formattedAddress = item.display_name.split(',').slice(0, 4).reverse().join(' ').trim()
+              }
 
-      // 한국식 도로명/주소 정제
-      const addrObj = item.address || {}
-      const province = addrObj.province || addrObj.city || ''
-      const district = addrObj.district || addrObj.suburb || addrObj.county || ''
-      const road = addrObj.road || ''
-      const houseNumber = addrObj.house_number || ''
-
-      let formattedAddress = ''
-      if (province && (district || road)) {
-        formattedAddress = `${province} ${district} ${road} ${houseNumber}`.trim()
-      } else {
-        formattedAddress = item.display_name.split(',').slice(0, 4).reverse().join(' ').trim()
+              results.push({
+                name,
+                address: formattedAddress || item.display_name,
+                lat,
+                lng,
+              })
+            }
+          }
+        }
       }
-
-      return {
-        name: item.name || item.display_name.split(',')[0].trim(),
-        address: formattedAddress || item.display_name,
-        lat,
-        lng,
-      }
-    })
-  } catch (err) {
-    console.warn('[AddressService] 장소 검색 오류:', err)
-    return []
+    } catch {}
   }
+
+  return results
 }
 
 /**
@@ -140,7 +166,17 @@ export async function geocodeAddress(addressText: string): Promise<{ lat: number
   const trimmed = addressText.trim()
   if (!trimmed) return null
 
-  // 1. 카카오 Geocoder 시도
+  // 1. 내장 데이터베이스 매칭
+  const local = queryKoreaSchoolsDB(trimmed)
+  if (local.length > 0) {
+    return {
+      lat: local[0].lat,
+      lng: local[0].lng,
+      address: local[0].address,
+    }
+  }
+
+  // 2. 카카오 Geocoder 시도
   const kakao = (window as unknown as {
     kakao?: {
       maps?: {
@@ -175,12 +211,10 @@ export async function geocodeAddress(addressText: string): Promise<{ lat: number
         })
       })
       if (res) return res
-    } catch {
-      // Nominatim으로 폴백
-    }
+    } catch {}
   }
 
-  // 2. Nominatim 엔진으로 좌표 변환
+  // 3. Nominatim 엔진으로 좌표 변환
   try {
     const list = await searchPlacesLive(trimmed)
     if (list.length > 0) {
