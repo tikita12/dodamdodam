@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { loginAdminWithEmail } from '@/services/adminAuthService'
-import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info } from '@lucide/vue'
+import { loginAdminWithEmail, sendPasswordResetForAdmin } from '@/services/adminAuthService'
+import { Shield, X, Lock, Mail, Loader2, AlertCircle, Info, CheckCircle2, KeyRound } from '@lucide/vue'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
@@ -11,10 +11,13 @@ const sessionStore = useSessionStore()
 const email = ref('cwacc@hanmail.net')
 const password = ref('')
 const isLoading = ref(false)
+const isResetLoading = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
 
 async function handleLogin() {
   errorMessage.value = ''
+  successMessage.value = ''
   isLoading.value = true
 
   try {
@@ -25,9 +28,9 @@ async function handleLogin() {
   } catch (err: unknown) {
     if (err instanceof Error) {
       if (err.message.includes('auth/invalid-credential') || err.message.includes('auth/wrong-password')) {
-        errorMessage.value = '이메일 또는 비밀번호가 올바르지 않습니다.'
+        errorMessage.value = '비밀번호가 올바르지 않습니다. 다시 확인해주세요.'
       } else if (err.message.includes('auth/user-not-found')) {
-        errorMessage.value = '등록되지 않은 관리자 계정입니다.'
+        errorMessage.value = 'Firebase 콘솔에 등록되지 않은 관리자 계정입니다.'
       } else {
         errorMessage.value = err.message
       }
@@ -39,8 +42,28 @@ async function handleLogin() {
   }
 }
 
+async function handleForgotPassword() {
+  errorMessage.value = ''
+  successMessage.value = ''
+  isResetLoading.value = true
+
+  try {
+    await sendPasswordResetForAdmin(email.value)
+    successMessage.value = `${email.value} 메일함으로 비밀번호 재설정 링크가 발송되었습니다! 메일을 확인해주세요.`
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      errorMessage.value = err.message
+    } else {
+      errorMessage.value = '비밀번호 재설정 이메일 발송에 실패했습니다.'
+    }
+  } finally {
+    isResetLoading.value = false
+  }
+}
+
 function handleClose() {
   errorMessage.value = ''
+  successMessage.value = ''
   password.value = ''
   sessionStore.closeAdminLoginModal()
 }
@@ -60,7 +83,7 @@ function handleClose() {
           </div>
           <div>
             <h3 class="text-base font-extrabold text-slate-900 leading-tight">관리자 로그인</h3>
-            <p class="text-[11px] text-slate-400">지정된 관리자 계정으로 접속</p>
+            <p class="text-[11px] text-slate-400">지정된 관리자 전용 계정</p>
           </div>
         </div>
         <button
@@ -81,6 +104,15 @@ function handleClose() {
         >
           <AlertCircle class="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
           <span class="font-medium leading-relaxed">{{ errorMessage }}</span>
+        </div>
+
+        <!-- Success Alert -->
+        <div
+          v-if="successMessage"
+          class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 flex items-start gap-2"
+        >
+          <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <span class="font-semibold leading-relaxed">{{ successMessage }}</span>
         </div>
 
         <!-- Info Hint -->
@@ -122,14 +154,25 @@ function handleClose() {
 
         <!-- Password Field -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">비밀번호</label>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-700">비밀번호</label>
+            <button
+              type="button"
+              @click="handleForgotPassword"
+              :disabled="isResetLoading"
+              class="text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline transition flex items-center gap-1 cursor-pointer"
+            >
+              <KeyRound class="w-3 h-3" />
+              <span>{{ isResetLoading ? '메일 발송 중...' : '비밀번호 재설정 메일 발송' }}</span>
+            </button>
+          </div>
           <div class="relative">
             <Lock class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               v-model="password"
               type="password"
               required
-              placeholder="비밀번호 입력 (로컬 테스트 시 아무 비밀번호나 입력)"
+              placeholder="Firebase에 등록한 관리자 비밀번호 입력"
               class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
             />
           </div>

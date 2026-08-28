@@ -1,6 +1,7 @@
 import {
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   type User,
 } from 'firebase/auth'
 import { auth } from '@/firebase/config'
@@ -52,6 +53,31 @@ export async function loginAdminWithEmail(email: string, pass: string): Promise<
     }
 
     throw new Error('관리자 로그인 인증에 실패했습니다.')
+  }
+}
+
+/**
+ * 관리자 비밀번호 재설정 이메일 발송
+ */
+export async function sendPasswordResetForAdmin(email: string): Promise<void> {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) throw new Error('이메일을 입력해주세요.')
+
+  if (!isAllowedAdminEmail(trimmedEmail)) {
+    throw new Error('관리자로 등록된 이메일 계정만 비밀번호를 재설정할 수 있습니다.')
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, trimmedEmail)
+  } catch (err: unknown) {
+    const errorCode = (err as { code?: string })?.code
+    if (errorCode === 'auth/user-not-found') {
+      throw new Error('Firebase 콘솔에 등록되지 않은 관리자 이메일입니다.')
+    }
+    if (err instanceof Error) {
+      throw err
+    }
+    throw new Error('비밀번호 재설정 이메일 발송에 실패했습니다.')
   }
 }
 
