@@ -287,7 +287,49 @@ export async function checkIfUserApplied(scheduleId: string, volunteerId: string
 }
 
 /**
- * 초고속 낙관적 자원봉사 참여 신청 (Optimistic UI)
+ * 동일 시간대 중복 신청 여부 검사
+ */
+export async function checkScheduleTimeConflict(
+  targetScheduleId: string,
+  volunteerId: string
+): Promise<{ hasConflict: boolean; conflictingSchoolName?: string }> {
+  if (!targetScheduleId || !volunteerId) return { hasConflict: false }
+
+  // 동적 import로 순환 참조 방지
+  const { getScheduleById } = await import('@/services/scheduleService')
+  const { toDayjs } = await import('@/utils/datetime')
+
+  const targetSchedule = await getScheduleById(targetScheduleId)
+  if (!targetSchedule) return { hasConflict: false }
+
+  const targetStart = toDayjs(targetSchedule.startAt).valueOf()
+  const targetEnd = toDayjs(targetSchedule.endAt).valueOf()
+
+  const otherResponses = localResponses.filter(
+    (r) => r.volunteerId === volunteerId && r.scheduleId !== targetScheduleId
+  )
+
+  for (const resp of otherResponses) {
+    const appliedSched = await getScheduleById(resp.scheduleId)
+    if (!appliedSched || appliedSched.status === 'cancelled') continue
+
+    const appliedStart = toDayjs(appliedSched.startAt).valueOf()
+    const appliedEnd = toDayjs(appliedSched.endAt).valueOf()
+
+    // 시간대 겹침 조건: startA < endB && endA > startB
+    if (targetStart < appliedEnd && targetEnd > appliedStart) {
+      return {
+        hasConflict: true,
+        conflictingSchoolName: appliedSched.schoolName,
+      }
+    }
+  }
+
+  return { hasConflict: false }
+}
+
+/**
+ * 초고속 낙관적 자원봉사 참여 신청 (Optimistic UI + 동일 시간대 중복 신청 차단)
  */
 export async function applyScheduleTransaction(
   scheduleId: string,
@@ -300,6 +342,12 @@ export async function applyScheduleTransaction(
 
   const existing = localResponses.find((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
   if (existing) throw new Error('이미 신청 완료된 일정입니다.')
+
+  // 동일 날짜/시간대 중복 신청 사전 검사
+  const conflict = await checkScheduleTimeConflict(scheduleId, volunteerId)
+  if (conflict.hasConflict) {
+    throw new Error(`이미 같은 시간대에 신청된 일정(${conflict.conflictingSchoolName})이 있어 신청할 수 없습니다.`)
+  }
 
   // 1. [초고속 즉시 반영] 로컬 상태 즉시 추가 및 0초 알림
   localResponses.push({
