@@ -1,8 +1,9 @@
-<script setup lang="ts">
-import { ref } from 'vue'
+﻿<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { registerVolunteer, loginVolunteer } from '@/services/volunteerService'
+import { registerVolunteer, loginVolunteer, subscribeVolunteers } from '@/services/volunteerService'
+import type { Volunteer } from '@/types'
 import {
   HeartHandshake,
   Sparkles,
@@ -17,6 +18,8 @@ import {
   Mail,
   KeyRound,
   X,
+  LogOut,
+  ChevronDown,
 } from '@lucide/vue'
 
 const router = useRouter()
@@ -25,28 +28,46 @@ const sessionStore = useSessionStore()
 // 활성 탭 ('login' | 'register')
 const activeTab = ref<'login' | 'register'>('login')
 
+// 승인된 봉사자 목록 (드롭다운용)
+const approvedVolunteers = ref<Volunteer[]>([])
+let unsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  unsubscribe = subscribeVolunteers((list) => {
+    approvedVolunteers.value = list
+  })
+})
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe()
+})
+
 // 비밀번호 분실 안내 모달 상태
 const showForgotModal = ref(false)
 
 // 로그인 폼 상태
-const loginName = ref('')
+const isCustomName = ref(false)
+const selectedName = ref('')
+const customName = ref('')
 const loginPassword = ref('')
 const isLoggingIn = ref(false)
 const loginError = ref('')
 
-// 가입 신청 폼 상태
-const regName = ref('')
-const regPassword = ref('')
-const regPasswordConfirm = ref('')
-const isRegistering = ref(false)
-const regError = ref('')
-const regSuccess = ref(false)
+function handleNameSelectChange() {
+  if (selectedName.value === '__custom__') {
+    isCustomName.value = true
+  } else {
+    isCustomName.value = false
+  }
+}
 
 // 로그인 처리
 async function handleLogin() {
   loginError.value = ''
-  if (!loginName.value.trim()) {
-    loginError.value = '이름을 입력해주세요.'
+  const nameToLogin = isCustomName.value ? customName.value.trim() : selectedName.value.trim()
+
+  if (!nameToLogin) {
+    loginError.value = '자원봉사자 이름을 선택하거나 입력해주세요.'
     return
   }
   if (!loginPassword.value.trim()) {
@@ -56,7 +77,7 @@ async function handleLogin() {
 
   isLoggingIn.value = true
   try {
-    const vol = await loginVolunteer(loginName.value, loginPassword.value)
+    const vol = await loginVolunteer(nameToLogin, loginPassword.value)
     sessionStore.setVolunteer(vol.id, vol.name)
     router.push('/main')
   } catch (err) {
@@ -65,6 +86,14 @@ async function handleLogin() {
     isLoggingIn.value = false
   }
 }
+
+// 가입 신청 폼 상태
+const regName = ref('')
+const regPassword = ref('')
+const regPasswordConfirm = ref('')
+const isRegistering = ref(false)
+const regError = ref('')
+const regSuccess = ref(false)
 
 // 신규 등록 신청 처리
 async function handleRegister() {
@@ -101,19 +130,27 @@ async function handleRegister() {
     isRegistering.value = false
   }
 }
+
+function handleContinueAsCurrent() {
+  router.push('/main')
+}
+
+function handleSwitchAccount() {
+  sessionStore.clearVolunteer()
+}
 </script>
 
 <template>
-  <div class="flex-1 flex flex-col justify-between bg-gradient-to-b from-emerald-50/70 via-white to-slate-50 p-6 min-h-[calc(100vh-60px)]">
+  <div class="flex-1 flex flex-col justify-between bg-gradient-to-b from-emerald-50/70 via-white to-slate-50 p-4 sm:p-6 min-h-[calc(100vh-60px)] min-h-[calc(100dvh-60px)]">
     <!-- Main Center Hero & Forms -->
     <div class="flex-1 flex flex-col justify-center items-center text-center my-auto py-4 max-w-sm mx-auto w-full">
       
       <!-- Brand Mascot Badge -->
-      <div class="relative mb-4">
-        <div class="w-18 h-18 rounded-3xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center text-white text-3xl shadow-xl shadow-emerald-500/25">
-          <HeartHandshake class="w-9 h-9" />
+      <div class="relative mb-3">
+        <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-3xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center text-white text-3xl shadow-xl shadow-emerald-500/25">
+          <HeartHandshake class="w-8 h-8 sm:w-9 sm:h-9" />
         </div>
-        <div class="absolute -bottom-1 -right-1 w-6.5 h-6.5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center text-amber-900 text-xs shadow-sm">
+        <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center text-amber-900 text-xs shadow-sm">
           <Sparkles class="w-3 h-3 fill-amber-900" />
         </div>
       </div>
@@ -122,8 +159,40 @@ async function handleRegister() {
       <h2 class="text-2xl font-black text-slate-900 tracking-tight">도담도담</h2>
       <p class="text-xs font-bold text-emerald-700 mt-0.5">자원봉사 일정관리 시스템</p>
 
+      <!-- Already Logged In Quick Action Banner -->
+      <div
+        v-if="sessionStore.isVolunteerLoggedIn"
+        class="w-full mt-4 p-4 bg-emerald-50 border border-emerald-200/90 rounded-3xl shadow-xs text-left space-y-2.5 animate-in fade-in"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-600">현재 로그인 계정</span>
+          <span class="px-2.5 py-0.5 bg-emerald-600 text-white rounded-full text-xs font-black">
+            {{ sessionStore.volunteerName }} 님
+          </span>
+        </div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            @click="handleContinueAsCurrent"
+            class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+          >
+            <span>봉사 일정 바로가기</span>
+            <ArrowRight class="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            @click="handleSwitchAccount"
+            class="px-3 py-2.5 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+            title="다른 계정으로 로그인"
+          >
+            <LogOut class="w-3.5 h-3.5" />
+            <span>로그아웃</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Main Auth Card -->
-      <div class="w-full mt-5 bg-white p-5 rounded-3xl shadow-sm border border-emerald-100/90 text-left space-y-4">
+      <div class="w-full mt-4 bg-white p-5 rounded-3xl shadow-sm border border-emerald-100/90 text-left space-y-4">
         
         <!-- Tab Selector: Login vs Register -->
         <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl">
@@ -173,20 +242,51 @@ async function handleRegister() {
           </div>
 
           <form @submit.prevent="handleLogin" class="space-y-3">
+            <!-- Name Selector / Input -->
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <UserCheck class="w-3.5 h-3.5 text-slate-400" />
-                <span>자원봉사자 이름</span>
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <UserCheck class="w-3.5 h-3.5 text-slate-400" />
+                  <span>자원봉사자 이름</span>
+                </label>
+                <button
+                  type="button"
+                  @click="isCustomName = !isCustomName"
+                  class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
+                >
+                  {{ isCustomName ? '명단에서 선택' : '직접 입력하기' }}
+                </button>
+              </div>
+
+              <!-- Dropdown mode -->
+              <div v-if="!isCustomName" class="relative">
+                <select
+                  v-model="selectedName"
+                  @change="handleNameSelectChange"
+                  required
+                  class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white appearance-none transition cursor-pointer"
+                >
+                  <option value="" disabled>봉사자 이름을 선택해주세요</option>
+                  <option v-for="v in approvedVolunteers" :key="v.id" :value="v.name">
+                    {{ v.name }}
+                  </option>
+                  <option value="__custom__">✏️ 직접 이름 입력하기...</option>
+                </select>
+                <ChevronDown class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              <!-- Direct input mode -->
               <input
-                v-model="loginName"
+                v-else
+                v-model="customName"
                 type="text"
                 required
-                placeholder="이름 입력 (예: 홍길동)"
+                placeholder="본인 실명 입력 (예: 홍길동)"
                 class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
               />
             </div>
 
+            <!-- Password Input -->
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -210,29 +310,29 @@ async function handleRegister() {
               />
             </div>
 
-          <button
-            type="submit"
-            :disabled="isLoggingIn"
-            class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer mt-2"
-          >
-            <Loader2 v-if="isLoggingIn" class="w-4 h-4 animate-spin" />
-            <template v-else>
-              <span>자원봉사자 일정 입장하기</span>
-              <ArrowRight class="w-4 h-4" />
-            </template>
-          </button>
-        </form>
+            <button
+              type="submit"
+              :disabled="isLoggingIn"
+              class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer mt-2"
+            >
+              <Loader2 v-if="isLoggingIn" class="w-4 h-4 animate-spin" />
+              <template v-else>
+                <span>자원봉사자 일정 입장하기</span>
+                <ArrowRight class="w-4 h-4" />
+              </template>
+            </button>
+          </form>
 
-        <div class="text-center pt-1">
-          <button
-            type="button"
-            @click="activeTab = 'register'; loginError = ''"
-            class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
-          >
-            처음 방문하셨나요? 봉사자 등록 신청하기 →
-          </button>
+          <div class="text-center pt-1">
+            <button
+              type="button"
+              @click="activeTab = 'register'; loginError = ''"
+              class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition cursor-pointer"
+            >
+              처음 방문하셨나요? 봉사자 등록 신청하기 →
+            </button>
+          </div>
         </div>
-      </div>
 
         <!-- ==================== TAB 2: REGISTER (PENDING) ==================== -->
         <div v-else class="space-y-3.5 animate-in fade-in duration-150">
