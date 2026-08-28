@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
   RotateCcw,
+  Mail,
 } from '@lucide/vue'
 
 const router = useRouter()
@@ -236,16 +237,29 @@ function handleEnter() {
 
     </div>
 
-    <!-- Bottom Footer: Admin Link -->
-    <div class="text-center py-2.5 border-t border-slate-200/60 mt-auto">
-      <button
-        type="button"
-        @click="sessionStore.openAdminLoginModal"
-        class="text-xs text-slate-400 hover:text-slate-700 font-semibold inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-      >
-        <Shield class="w-3.5 h-3.5 text-amber-500" />
-        <span>관리자 로그인</span>
-      </button>
+    <!-- Bottom Footer: Admin Link & Developer Contact -->
+    <div class="text-center py-3 border-t border-slate-200/60 mt-auto space-y-2">
+      <div>
+        <button
+          type="button"
+          @click="sessionStore.openAdminLoginModal"
+          class="text-xs text-slate-500 hover:text-slate-800 font-bold inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+        >
+          <Shield class="w-3.5 h-3.5 text-amber-500" />
+          <span>관리자 로그인</span>
+        </button>
+      </div>
+      <div class="text-[11px] text-slate-400 font-medium">
+        <span>개발자 문의: </span>
+        <a
+          href="mailto:bshine530@gmail.com"
+          class="text-emerald-600 hover:text-emerald-700 font-bold underline underline-offset-2 transition inline-flex items-center gap-1 cursor-pointer"
+          title="개발자에게 이메일 보내기"
+        >
+          <Mail class="w-3 h-3 inline" />
+          <span>bshine530@gmail.com</span>
+        </a>
+      </div>
     </div>
   </div>
 </template>

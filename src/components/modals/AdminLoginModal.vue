@@ -86,7 +86,7 @@ function handleClose() {
         <!-- Info Hint -->
         <div class="p-2.5 bg-amber-50/80 border border-amber-200/60 rounded-xl text-[11px] text-amber-900 flex items-center gap-1.5 font-medium">
           <Info class="w-3.5 h-3.5 text-amber-600 shrink-0" />
-          <span>관리자 계정: <strong>bshine530@gmail.com</strong></span>
+          <span>관리자 계정: <strong>cwacc@hanmail.net</strong> 또는 <strong>admin2@dodam.com</strong></span>
         </div>
 
         <!-- Email Field -->
