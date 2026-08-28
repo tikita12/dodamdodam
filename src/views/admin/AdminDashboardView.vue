@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { subscribeAllSchedules } from '@/services/scheduleService'
-import { subscribeVolunteers } from '@/services/volunteerService'
+import { subscribeVolunteers, subscribePendingVolunteers } from '@/services/volunteerService'
 import type { Schedule, Volunteer } from '@/types'
 import { computeScheduleStatus } from '@/utils/status'
 import { toDayjs } from '@/utils/datetime'
@@ -22,12 +22,14 @@ import dayjs from 'dayjs'
 
 const schedules = ref<Schedule[]>([])
 const volunteers = ref<Volunteer[]>([])
+const pendingVolunteers = ref<Volunteer[]>([])
 const isLoading = ref(true)
 const loadError = ref<string | null>(null)
 const activeTab = ref<AdminFilterTab>('all')
 
 let unsubscribeSchedules: (() => void) | null = null
 let unsubscribeVolunteers: (() => void) | null = null
+let unsubscribePending: (() => void) | null = null
 
 function loadData() {
   isLoading.value = true
@@ -50,6 +52,11 @@ function loadData() {
   unsubscribeVolunteers = subscribeVolunteers((list) => {
     volunteers.value = list
   })
+
+  // 3. 승인 대기 봉사자 구독
+  unsubscribePending = subscribePendingVolunteers((list) => {
+    pendingVolunteers.value = list
+  })
 }
 
 onMounted(() => {
@@ -59,6 +66,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribeSchedules) unsubscribeSchedules()
   if (unsubscribeVolunteers) unsubscribeVolunteers()
+  if (unsubscribePending) unsubscribePending()
 })
 
 // 탭별 카운트 계산
@@ -132,15 +140,23 @@ const filteredSchedules = computed(() => {
       <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/60">
         <router-link
           to="/admin/volunteers"
-          class="p-2.5 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl border border-slate-700/80 flex items-center gap-2.5 transition active:scale-98 text-xs font-bold text-slate-200"
+          class="p-2.5 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl border border-slate-700/80 flex items-center justify-between transition active:scale-98 text-xs font-bold text-slate-200"
         >
-          <div class="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-            <Users class="w-3.5 h-3.5" />
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <Users class="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <p class="leading-tight">봉사자 관리</p>
+              <p class="text-[10px] text-slate-400 font-normal mt-0.5">{{ volunteers.length }}명 등록됨</p>
+            </div>
           </div>
-          <div>
-            <p class="leading-tight">봉사자 관리</p>
-            <p class="text-[10px] text-slate-400 font-normal mt-0.5">{{ volunteers.length }}명 등록됨</p>
-          </div>
+          <span
+            v-if="pendingVolunteers.length > 0"
+            class="px-2 py-0.5 bg-amber-500 text-white rounded-full text-[10px] font-black animate-pulse"
+          >
+            대기 {{ pendingVolunteers.length }}
+          </span>
         </router-link>
 
         <router-link

@@ -46,7 +46,19 @@ service cloud.firestore {
     // 자원봉사자 명단 컬렉션 (/volunteers/{volunteerId})
     match /volunteers/{volunteerId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // 1) 관리자는 모든 쓰기/수정/삭제 허용
+      // 2) 비인증 봉사자는 'pending' 상태로 신규 등록 신청 생성 허용
+      allow create: if isAdmin() || (
+        request.resource.data.keys().hasAll(['name', 'password', 'status', 'createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.password is string
+        && request.resource.data.password.size() >= 4
+        && request.resource.data.createdAt == request.time
+      );
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // 교육 과목 컬렉션 (/subjects/{subjectId})
