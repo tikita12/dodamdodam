@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { getScheduleById } from '@/services/scheduleService'
+import { getScheduleById, adminCancelSchedule } from '@/services/scheduleService'
 import { subscribeScheduleResponses } from '@/services/applicationService'
 import type { Schedule, VolunteerResponse } from '@/types'
 import { formatFullDate, formatTimeRange, isWithinRecentDays } from '@/utils/datetime'
@@ -22,9 +22,6 @@ import {
   Edit,
   Ban,
 } from 'lucide-vue-next'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/firebase/config'
-import { getCollectionPath } from '@/utils/firestorePaths'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,7 +94,7 @@ const isNew = computed(() => {
   return isWithinRecentDays(schedule.value.createdAt, 7)
 })
 
-// 관리자: 일정 취소 처리
+// 관리자: 일정 취소 처리 (0초 즉시 반영)
 async function handleAdminCancelSchedule() {
   if (!schedule.value) return
   if (!confirm('정말로 이 일정을 취소하시겠습니까? (취소된 일정은 복원할 수 없습니다)')) {
@@ -106,11 +103,7 @@ async function handleAdminCancelSchedule() {
 
   isCancelling.value = true
   try {
-    const docRef = doc(db, getCollectionPath.schedule(schedule.value.id))
-    await updateDoc(docRef, {
-      status: 'cancelled',
-      updatedAt: serverTimestamp(),
-    })
+    await adminCancelSchedule(schedule.value.id)
     schedule.value.status = 'cancelled'
     alert('일정이 취소되었습니다.')
   } catch (err) {

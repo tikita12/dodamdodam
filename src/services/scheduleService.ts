@@ -725,3 +725,47 @@ export async function updateSchedule(id: string, formData: ScheduleFormData) {
     }).catch(() => {})
   } catch {}
 }
+
+/**
+ * [초고속 즉시 취소] 관리자: 일정 자체 취소 (Optimistic UI - 0초 반영)
+ */
+export async function adminCancelSchedule(id: string) {
+  const target = localSchedules.find((s) => s.id === id)
+  if (target) {
+    target.status = 'cancelled'
+    saveSchedules()
+    notifyAllScheduleSubscribers()
+  }
+
+  try {
+    const docRef = doc(db, getCollectionPath.schedule(id))
+    updateDoc(docRef, {
+      status: 'cancelled',
+      updatedAt: serverTimestamp(),
+    }).catch(() => {})
+  } catch {}
+}
+
+/**
+ * [초고속 즉시 토글] 관리자: 일정 확정/모집중 토글 (Optimistic UI - 0초 반영)
+ */
+export async function adminToggleScheduleConfirm(id: string, currentStatus: string) {
+  const nextStatus = currentStatus === 'confirmed' ? 'open' : 'confirmed'
+  const target = localSchedules.find((s) => s.id === id)
+  if (target) {
+    target.status = nextStatus as 'open' | 'confirmed'
+    saveSchedules()
+    notifyAllScheduleSubscribers()
+  }
+
+  try {
+    const docRef = doc(db, getCollectionPath.schedule(id))
+    updateDoc(docRef, {
+      status: nextStatus,
+      updatedAt: serverTimestamp(),
+    }).catch(() => {})
+  } catch {}
+
+  return nextStatus
+}
+

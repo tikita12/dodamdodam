@@ -3,7 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Schedule, Volunteer, VolunteerResponse } from '@/types'
 import { formatScheduleDateTime } from '@/utils/datetime'
 import { computeScheduleStatus } from '@/utils/status'
-import { subscribeScheduleResponses, adminToggleScheduleConfirm } from '@/services/applicationService'
+import { subscribeScheduleResponses } from '@/services/applicationService'
+import { adminCancelSchedule, adminToggleScheduleConfirm } from '@/services/scheduleService'
 import AdminParticipantManager from './AdminParticipantManager.vue'
 import {
   Calendar,
@@ -17,9 +18,6 @@ import {
   MapPin,
   FileText,
 } from 'lucide-vue-next'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/firebase/config'
-import { getCollectionPath } from '@/utils/firestorePaths'
 
 const props = defineProps<{
   schedule: Schedule
@@ -68,11 +66,7 @@ async function handleCancelSchedule() {
 
   isCancelling.value = true
   try {
-    const docRef = doc(db, getCollectionPath.schedule(props.schedule.id))
-    await updateDoc(docRef, {
-      status: 'cancelled',
-      updatedAt: serverTimestamp(),
-    })
+    await adminCancelSchedule(props.schedule.id)
     props.schedule.status = 'cancelled'
     alert('일정이 취소되었습니다.')
   } catch (err) {
