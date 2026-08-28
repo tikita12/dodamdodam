@@ -57,7 +57,14 @@ service cloud.firestore {
         && request.resource.data.passwordHash.size() >= 16
         && request.resource.data.createdAt == request.time
       );
-      allow update: if isAdmin();
+      // 3) 비밀번호 변경 수정: 관리자 또는 봉사자 본인의 passwordHash 갱신 허용
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passwordHash', 'updatedAt'])
+        && request.resource.data.passwordHash is string
+        && request.resource.data.passwordHash.size() >= 16
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.status == resource.data.status
+      );
       allow delete: if isAdmin();
     }
 

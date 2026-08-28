@@ -285,12 +285,14 @@ export async function loginVolunteer(name: string, password: string): Promise<Vo
 
   // 비밀번호 해시가 저장되어 있는 경우 검증
   if (target.passwordHash) {
-    if (target.passwordHash !== inputHash) {
+    const isHashMatch = target.passwordHash === inputHash
+    const isPlainMatch = target.passwordHash === trimmedPassword // 이전 버전 평문 저장 호환
+    if (!isHashMatch && !isPlainMatch) {
       throw new Error('비밀번호가 일치하지 않습니다. 다시 확인해주세요.')
     }
   } else {
     // 기본 15인 등 아직 해시 미설정 상태인 경우: 기본 비밀번호('0000') 검증
-    if (inputHash !== defaultHash) {
+    if (inputHash !== defaultHash && trimmedPassword !== DEFAULT_INIT_PASSWORD) {
       throw new Error(`초기 비밀번호는 '${DEFAULT_INIT_PASSWORD}'입니다. 입력 후 입장하여 비밀번호를 변경해주세요.`)
     }
     target.passwordHash = inputHash
@@ -320,14 +322,17 @@ export async function changeVolunteerPassword(
     throw new Error('새 비밀번호는 4자리 이상이어야 합니다.')
   }
 
-  const target = localVolunteers.find((v) => v.id === id)
+  const target = localVolunteers.find((v) => v.id === id || v.name === id)
   if (!target) throw new Error('봉사자 정보를 찾을 수 없습니다.')
 
   const oldHash = await hashPassword(trimmedOld)
   const defaultHash = await hashPassword(DEFAULT_INIT_PASSWORD)
   const currentExpectedHash = target.passwordHash || defaultHash
 
-  if (currentExpectedHash !== oldHash) {
+  const isOldHashMatch = currentExpectedHash === oldHash
+  const isOldPlainMatch = target.passwordHash === trimmedOld || (trimmedOld === DEFAULT_INIT_PASSWORD && !target.passwordHash)
+
+  if (!isOldHashMatch && !isOldPlainMatch) {
     throw new Error('현재 비밀번호가 일치하지 않습니다.')
   }
 
@@ -337,7 +342,7 @@ export async function changeVolunteerPassword(
   notifySubscribers()
 
   try {
-    await updateDoc(doc(db, getCollectionPath.volunteer(id)), {
+    await updateDoc(doc(db, getCollectionPath.volunteer(target.id)), {
       passwordHash: newHash,
       updatedAt: serverTimestamp(),
     })
