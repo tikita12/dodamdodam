@@ -16,14 +16,6 @@
 4. **웹 앱 등록**:
    - 프로젝트 설정 > 일반 > 내 앱에서 웹 앱 등록 후 Firebase SDK 설정 키 확인
 
-### 1-2. 카카오 디벨로퍼스 JavaScript API 키 준비 (선택사항)
-1. [카카오 디벨로퍼스](https://developers.kakao.com/) 로그인 후 내 애플리케이션 추가
-2. **앱 키 > JavaScript 키** 복사 (미설정 시에도 내장 Leaflet/OpenStreetMap 실제 인터랙티브 지도가 자동 구동됩니다)
-3. **플랫폼 > Web 플랫폼 등록**:
-   - `http://localhost:5173` (로컬 개발용)
-   - `https://<당신의-프로젝트-ID>.web.app` (Firebase Hosting 배포용)
-   - `https://<당신의-프로젝트-ID>.firebaseapp.com`
-
 ---
 
 ## 🔑 2. 환경변수 설정 (`.env.local`)
@@ -38,9 +30,6 @@ VITE_FIREBASE_PROJECT_ID=dodamdodam-app
 VITE_FIREBASE_STORAGE_BUCKET=dodamdodam-app.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
 VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
-
-# Kakao Map JavaScript API Key (선택사항)
-VITE_KAKAO_MAP_API_KEY=your_kakao_javascript_api_key_here
 
 # Admin Allowlist Emails (2명 고정 기준)
 VITE_ADMIN_EMAILS=cwacc@hanmail.net,admin2@dodam.com
@@ -57,7 +46,7 @@ npm install
 # 2. 로컬 개발 서버 시작 (http://localhost:5173)
 npm run dev
 
-# 3. 단위 테스트 실행
+# 3. 단위 테스트 실행 (33개 테스트)
 npm test
 
 # 4. 프로덕션 빌드 검증
@@ -78,12 +67,11 @@ firebase login
 
 # 프로젝트 연결 확인
 firebase use --add
-# (Firebase 콘솔에서 생성한 프로젝트 선택)
 ```
 
 ### 4-2. Firestore 보안 규칙 배포
 ```bash
-# firestore.rules 파일 배포
+# firestore.rules 파일 배포 (일반 유저 pending 생성 허용 & 관리자 승인/삭제 권한 강제)
 firebase deploy --only firestore:rules
 ```
 
@@ -100,9 +88,15 @@ firebase deploy --only hosting
 
 ---
 
-## ⚙️ 5. 초기 운영 데이터 셋업 순서
+## ⚙️ 5. 운영 워크플로우 가이드
 
-1. **배포 URL 접속** (`https://<프로젝트ID>.web.app`)
-2. 진입 화면 하단의 **[관리자 로그인]** 클릭 ➔ `cwacc@hanmail.net` 및 비밀번호로 로그인
-3. 기본적으로 2026년 실제 24개 유치원/초등학교 교육 일정 및 15인 봉사자 실명이 기본 탑재되어 있으며, 추가/수정/취소를 자유롭게 진행하실 수 있습니다.
-4. 봉사자들은 별도 비밀번호 없이 진입 화면에서 본인 이름만 선택하여 즉시 일정을 조회하고 1-Click 참여 신청/취소가 가능합니다.
+1. **초기 진입 화면 (`/`)**:
+   - 등록된 봉사자는 이름과 비밀번호를 입력하여 입장합니다.
+   - 신규 봉사자는 **[신규 등록 신청]** 탭에서 실명과 4자리 비밀번호를 입력하여 신청을 접수합니다.
+2. **관리자 대시보드 로그인 (`/admin`)**:
+   - 진입 화면 하단 **[관리자 대시보드 로그인]** 클릭 후 등록된 관리자 계정으로 로그인합니다.
+3. **가입 승인 관리 (`/admin/volunteers`)**:
+   - 대시보드 상단 또는 봉사자 관리 페이지의 **[🔔 가입 승인 대기]** 탭에서 신청자를 확인하고 **`[승인]`** 또는 **`[반려]`**를 진행합니다.
+   - 봉사자가 비밀번호를 분실한 경우, 각 봉사자 옆 **`[🔑 비번 재설정]`** 버튼을 눌러 새 비밀번호로 1초 만에 초기화해 줄 수 있습니다.
+4. **일정 등록 및 주소 자동 완성 (`/admin/schedule/new`)**:
+   - **`[학교 / 도로명 주소 검색하기]`** 버튼을 눌러 검색창에서 선택하면 학교명, 도로명 주소, 지도 좌표가 1초 만에 자동 완성됩니다.
