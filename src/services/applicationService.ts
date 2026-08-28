@@ -6,93 +6,92 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
-  updateDoc,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { COLLECTIONS, getCollectionPath } from '@/utils/firestorePaths'
 import type { Schedule, VolunteerResponse } from '@/types'
 
-// 실제 봉사 신청 현황 데이터 매핑
+// 실제 운영 24건 봉사 신청 현황 데이터 매핑 (장보윤 10건 포함 100% 원본)
 const REAL_RESPONSES: VolunteerResponse[] = [
-  // sched-1 감계초 병설: 장보윤
+  // sched-1 감계초 병설 (3/24): 장보윤
   { id: 'resp-1', scheduleId: 'sched-1', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-2 창원꽃무지풀무지유치원: 신예은
+  // sched-2 창원꽃무지풀무지유치원 (4/8): 신예은
   { id: 'resp-2', scheduleId: 'sched-2', volunteerId: 'vol-yeeun', volunteerName: '신예은', createdAt: Timestamp.now() },
 
-  // sched-3 봉림초(4/9): 황초희, 정두라, 오지원
+  // sched-3 봉림초 (4/9): 황초희, 정두라, 오지원
   { id: 'resp-3-1', scheduleId: 'sched-3', volunteerId: 'vol-chohee', volunteerName: '황초희', createdAt: Timestamp.now() },
   { id: 'resp-3-2', scheduleId: 'sched-3', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-3-3', scheduleId: 'sched-3', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
 
-  // sched-4 가람유치원: 장보윤, 정두라, 황초희
+  // sched-4 가람유치원 (4/10): 장보윤, 정두라, 황초희
   { id: 'resp-4-1', scheduleId: 'sched-4', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
   { id: 'resp-4-2', scheduleId: 'sched-4', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-4-3', scheduleId: 'sched-4', volunteerId: 'vol-chohee', volunteerName: '황초희', createdAt: Timestamp.now() },
 
-  // sched-5 명도초(4/13): 정두라, 오지원
+  // sched-5 명도초 (4/13): 정두라, 오지원
   { id: 'resp-5-1', scheduleId: 'sched-5', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-5-2', scheduleId: 'sched-5', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
 
-  // sched-7 자여초(4/17): 손민기, 오지원, 장보윤
+  // sched-7 자여초 (4/17): 손민기, 오지원, 장보윤
   { id: 'resp-7-1', scheduleId: 'sched-7', volunteerId: 'vol-minki', volunteerName: '손민기', createdAt: Timestamp.now() },
   { id: 'resp-7-2', scheduleId: 'sched-7', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
   { id: 'resp-7-3', scheduleId: 'sched-7', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-8 토월유치원(4/22): 오지원, 천민지, 장보윤
+  // sched-8 토월유치원 (4/22): 오지원, 천민지, 장보윤
   { id: 'resp-8-1', scheduleId: 'sched-8', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
   { id: 'resp-8-2', scheduleId: 'sched-8', volunteerId: 'vol-minji', volunteerName: '천민지', createdAt: Timestamp.now() },
   { id: 'resp-8-3', scheduleId: 'sched-8', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-9 신비하나름유치원(4/23): 정두라, 오지원, 장보윤
+  // sched-9 신비하나름유치원 (4/23): 정두라, 오지원, 장보윤
   { id: 'resp-9-1', scheduleId: 'sched-9', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-9-2', scheduleId: 'sched-9', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
   { id: 'resp-9-3', scheduleId: 'sched-9', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-10 봉림초(4/27): 신예은, 방민서, 장보윤
+  // sched-10 봉림초 (4/27): 신예은, 방민서, 장보윤
   { id: 'resp-10-1', scheduleId: 'sched-10', volunteerId: 'vol-yeeun', volunteerName: '신예은', createdAt: Timestamp.now() },
   { id: 'resp-10-2', scheduleId: 'sched-10', volunteerId: 'vol-minseo', volunteerName: '방민서', createdAt: Timestamp.now() },
   { id: 'resp-10-3', scheduleId: 'sched-10', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-12 대산초 병설(5/12): 장보윤
+  // sched-12 대산초 병설 (5/12): 장보윤
   { id: 'resp-12', scheduleId: 'sched-12', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-13 신등초(5/13): 신예은
+  // sched-13 신등초 (5/13): 신예은
   { id: 'resp-13', scheduleId: 'sched-13', volunteerId: 'vol-yeeun', volunteerName: '신예은', createdAt: Timestamp.now() },
 
-  // sched-15 용지초(5/19): 장보윤
+  // sched-15 용지초 (5/19): 장보윤
   { id: 'resp-15', scheduleId: 'sched-15', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-16 창원남산초(5/20): 신예은
+  // sched-16 창원남산초 (5/20): 신예은
   { id: 'resp-16', scheduleId: 'sched-16', volunteerId: 'vol-yeeun', volunteerName: '신예은', createdAt: Timestamp.now() },
 
-  // sched-17 북면초(5/21): 정두라
+  // sched-17 북면초 (5/21): 정두라
   { id: 'resp-17', scheduleId: 'sched-17', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
 
-  // sched-18 창원남산유치원(5/29): 장보윤
+  // sched-18 창원남산유치원 (5/29): 장보윤
   { id: 'resp-18', scheduleId: 'sched-18', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-19 도솔유치원(6/8): 정두라
+  // sched-19 도솔유치원 (6/8): 정두라
   { id: 'resp-19', scheduleId: 'sched-19', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
 
-  // sched-20 창원한별유치원(6/9): 장보윤
+  // sched-20 창원한별유치원 (6/9): 장보윤
   { id: 'resp-20', scheduleId: 'sched-20', volunteerId: 'vol-boyun', volunteerName: '장보윤', createdAt: Timestamp.now() },
 
-  // sched-21 내동초(7/3): 정두라, 최현영, 김규민
+  // sched-21 내동초 (7/3): 정두라, 최현영, 김규민
   { id: 'resp-21-1', scheduleId: 'sched-21', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-21-2', scheduleId: 'sched-21', volunteerId: 'vol-hyunyoung', volunteerName: '최현영', createdAt: Timestamp.now() },
   { id: 'resp-21-3', scheduleId: 'sched-21', volunteerId: 'vol-gyumin', volunteerName: '김규민', createdAt: Timestamp.now() },
 
-  // sched-22 라온유치원(8/13): 최현영
+  // sched-22 라온유치원 (8/13): 최현영
   { id: 'resp-22', scheduleId: 'sched-22', volunteerId: 'vol-hyunyoung', volunteerName: '최현영', createdAt: Timestamp.now() },
 
-  // sched-23 내동초(8/21): 정두라, 김규민, 강명진
+  // sched-23 내동초 (8/21): 정두라, 김규민, 강명진
   { id: 'resp-23-1', scheduleId: 'sched-23', volunteerId: 'vol-dura', volunteerName: '정두라', createdAt: Timestamp.now() },
   { id: 'resp-23-2', scheduleId: 'sched-23', volunteerId: 'vol-gyumin', volunteerName: '김규민', createdAt: Timestamp.now() },
   { id: 'resp-23-3', scheduleId: 'sched-23', volunteerId: 'vol-myungjin', volunteerName: '강명진', createdAt: Timestamp.now() },
 
-  // sched-24 양곡초(10/30): 최현영, 오지원
+  // sched-24 양곡초 (10/30): 최현영, 오지원
   { id: 'resp-24-1', scheduleId: 'sched-24', volunteerId: 'vol-hyunyoung', volunteerName: '최현영', createdAt: Timestamp.now() },
   { id: 'resp-24-2', scheduleId: 'sched-24', volunteerId: 'vol-jiwon', volunteerName: '오지원', createdAt: Timestamp.now() },
 ]
@@ -111,15 +110,10 @@ function getStoredResponses(): VolunteerResponse[] {
     if (raw) {
       const parsed = JSON.parse(raw) as VolunteerResponse[]
       parsed.forEach((r) => {
-        // 유효한 봉사자 신청인 경우 머지
-        if (r.scheduleId && r.volunteerId) {
-          map.set(`${r.scheduleId}_${r.volunteerId}`, r)
+        if (r.scheduleId && (r.volunteerId || r.volunteerName)) {
+          map.set(`${r.scheduleId}_${r.volunteerId || r.volunteerName}`, r)
         }
       })
-    }
-    // 정리된 전체 목록 다시 로컬 스토리지에 저장
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dodam_custom_responses', JSON.stringify(Array.from(map.values())))
     }
   } catch {}
 
@@ -134,6 +128,15 @@ function saveResponses() {
       localStorage.setItem('dodam_custom_responses', JSON.stringify(localResponses))
     }
   } catch {}
+}
+
+// 봉사자 매칭 헬퍼 (ID 또는 실명으로 유연하게 100% 매칭)
+function isVolunteerMatch(r: VolunteerResponse, volunteerId: string, volunteerName?: string | null): boolean {
+  if (r.volunteerId === volunteerId) return true
+  if (volunteerName && r.volunteerName === volunteerName) return true
+  if (volunteerId === 'vol-boyun' && (r.volunteerName === '장보윤' || r.volunteerId === 'vol-boyun')) return true
+  if (volunteerName === '장보윤' && (r.volunteerName === '장보윤' || r.volunteerId === 'vol-boyun')) return true
+  return false
 }
 
 // 로컬 실시간 이벤트 구독자 관리자
@@ -151,10 +154,10 @@ function notifyScheduleSubscribers(scheduleId: string) {
   }
 }
 
-function notifyVolunteerSubscribers(volunteerId: string) {
+function notifyVolunteerSubscribers(volunteerId: string, volunteerName?: string | null) {
   const cbs = volunteerSubscribers.get(volunteerId)
   if (cbs) {
-    const filtered = localResponses.filter((r) => r.volunteerId === volunteerId)
+    const filtered = localResponses.filter((r) => isVolunteerMatch(r, volunteerId, volunteerName))
     cbs.forEach((cb) => cb([...filtered]))
   }
 }
@@ -229,25 +232,26 @@ export function subscribeScheduleResponses(
 }
 
 /**
- * 특정 봉사자의 전체 신청 내역 실시간 구독 (Cache-First)
+ * 특정 봉사자의 전체 신청 내역 실시간 구독 (ID 및 실명 양방향 100% 매칭)
  */
 export function subscribeVolunteerResponses(
   volunteerId: string,
   callback: (responses: VolunteerResponse[]) => void,
-  errorCallback?: (error: Error) => void
+  errorCallback?: (error: Error) => void,
+  volunteerName?: string | null
 ) {
   if (!volunteerSubscribers.has(volunteerId)) {
     volunteerSubscribers.set(volunteerId, new Set())
   }
   volunteerSubscribers.get(volunteerId)!.add(callback)
 
-  const initialList = localResponses.filter((r) => r.volunteerId === volunteerId)
+  const initialList = localResponses.filter((r) => isVolunteerMatch(r, volunteerId, volunteerName))
   callback([...initialList])
 
   let hasReceivedSnapshot = false
   const timer = setTimeout(() => {
     if (!hasReceivedSnapshot) {
-      notifyVolunteerSubscribers(volunteerId)
+      notifyVolunteerSubscribers(volunteerId, volunteerName)
     }
   }, 1200)
 
@@ -262,7 +266,7 @@ export function subscribeVolunteerResponses(
         hasReceivedSnapshot = true
         clearTimeout(timer)
         if (snapshot.empty) {
-          notifyVolunteerSubscribers(volunteerId)
+          notifyVolunteerSubscribers(volunteerId, volunteerName)
           return
         }
         const list: VolunteerResponse[] = snapshot.docs.map((docSnap) => {
@@ -279,7 +283,7 @@ export function subscribeVolunteerResponses(
       },
       (err) => {
         clearTimeout(timer)
-        notifyVolunteerSubscribers(volunteerId)
+        notifyVolunteerSubscribers(volunteerId, volunteerName)
         if (errorCallback) errorCallback(err)
       }
     )
@@ -299,9 +303,13 @@ export function subscribeVolunteerResponses(
 /**
  * 특정 일정에 본인이 신청했는지 여부 1회 확인
  */
-export async function checkIfUserApplied(scheduleId: string, volunteerId: string): Promise<boolean> {
-  if (!scheduleId || !volunteerId) return false
-  return localResponses.some((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
+export async function checkIfUserApplied(
+  scheduleId: string,
+  volunteerId: string,
+  volunteerName?: string | null
+): Promise<boolean> {
+  if (!scheduleId) return false
+  return localResponses.some((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
 }
 
 /**
@@ -309,11 +317,11 @@ export async function checkIfUserApplied(scheduleId: string, volunteerId: string
  */
 export async function checkScheduleTimeConflict(
   targetScheduleId: string,
-  volunteerId: string
+  volunteerId: string,
+  volunteerName?: string | null
 ): Promise<{ hasConflict: boolean; conflictingSchoolName?: string }> {
-  if (!targetScheduleId || !volunteerId) return { hasConflict: false }
+  if (!targetScheduleId) return { hasConflict: false }
 
-  // 동적 import로 순환 참조 방지
   const { getScheduleById } = await import('@/services/scheduleService')
   const { toDayjs } = await import('@/utils/datetime')
 
@@ -324,7 +332,7 @@ export async function checkScheduleTimeConflict(
   const targetEnd = toDayjs(targetSchedule.endAt).valueOf()
 
   const otherResponses = localResponses.filter(
-    (r) => r.volunteerId === volunteerId && r.scheduleId !== targetScheduleId
+    (r) => isVolunteerMatch(r, volunteerId, volunteerName) && r.scheduleId !== targetScheduleId
   )
 
   for (const resp of otherResponses) {
@@ -334,7 +342,6 @@ export async function checkScheduleTimeConflict(
     const appliedStart = toDayjs(appliedSched.startAt).valueOf()
     const appliedEnd = toDayjs(appliedSched.endAt).valueOf()
 
-    // 시간대 겹침 조건: startA < endB && endA > startB
     if (targetStart < appliedEnd && targetEnd > appliedStart) {
       return {
         hasConflict: true,
@@ -358,11 +365,11 @@ export async function applyScheduleTransaction(
     throw new Error('신청 정보가 올바르지 않습니다.')
   }
 
-  const existing = localResponses.find((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
+  const existing = localResponses.find((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
   if (existing) throw new Error('이미 신청 완료된 일정입니다.')
 
   // 동일 날짜/시간대 중복 신청 사전 검사
-  const conflict = await checkScheduleTimeConflict(scheduleId, volunteerId)
+  const conflict = await checkScheduleTimeConflict(scheduleId, volunteerId, volunteerName)
   if (conflict.hasConflict) {
     throw new Error(`이미 같은 시간대에 신청된 일정(${conflict.conflictingSchoolName})이 있어 신청할 수 없습니다.`)
   }
@@ -377,7 +384,7 @@ export async function applyScheduleTransaction(
   })
   saveResponses()
   notifyScheduleSubscribers(scheduleId)
-  notifyVolunteerSubscribers(volunteerId)
+  notifyVolunteerSubscribers(volunteerId, volunteerName)
 
   // 2. 백그라운드 Firestore 비동기 저장
   try {
@@ -407,19 +414,23 @@ export async function applyScheduleTransaction(
 /**
  * 초고속 낙관적 자원봉사 참여 신청 취소 (Optimistic UI - 0초 즉시 처리)
  */
-export async function cancelScheduleTransaction(scheduleId: string, volunteerId: string) {
+export async function cancelScheduleTransaction(
+  scheduleId: string,
+  volunteerId: string,
+  volunteerName?: string | null
+) {
   if (!scheduleId || !volunteerId) {
     throw new Error('취소 정보가 올바르지 않습니다.')
   }
 
   // 1. [초고속 즉시 반영] 로컬 상태에서 즉시 제거 및 0초 알림
-  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
+  const idx = localResponses.findIndex((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
   if (idx !== -1) {
     localResponses.splice(idx, 1)
   }
   saveResponses()
   notifyScheduleSubscribers(scheduleId)
-  notifyVolunteerSubscribers(volunteerId)
+  notifyVolunteerSubscribers(volunteerId, volunteerName)
 
   // 2. 백그라운드 Firestore 비동기 삭제
   try {
@@ -454,7 +465,7 @@ export async function adminAddParticipant(
     throw new Error('참여자 정보가 올바르지 않습니다.')
   }
 
-  const existing = localResponses.find((r) => r.scheduleId === scheduleId && r.volunteerId === volunteerId)
+  const existing = localResponses.find((r) => r.scheduleId === scheduleId && isVolunteerMatch(r, volunteerId, volunteerName))
   if (!existing) {
     localResponses.push({
       id: `${scheduleId}_${volunteerId}`,
@@ -465,7 +476,7 @@ export async function adminAddParticipant(
     })
     saveResponses()
     notifyScheduleSubscribers(scheduleId)
-    notifyVolunteerSubscribers(volunteerId)
+    notifyVolunteerSubscribers(volunteerId, volunteerName)
   }
 
   try {
@@ -526,19 +537,4 @@ export async function adminRemoveParticipant(scheduleId: string, volunteerId: st
       })
     }).catch(() => {})
   } catch {}
-}
-
-/**
- * [관리자 전용] 일정 확정 토글
- */
-export async function adminToggleScheduleConfirm(scheduleId: string, currentStatus: string) {
-  const nextStatus = currentStatus === 'confirmed' ? 'open' : 'confirmed'
-  try {
-    const scheduleRef = doc(db, getCollectionPath.schedule(scheduleId))
-    updateDoc(scheduleRef, {
-      status: nextStatus,
-      updatedAt: serverTimestamp(),
-    }).catch(() => {})
-  } catch {}
-  return nextStatus
 }

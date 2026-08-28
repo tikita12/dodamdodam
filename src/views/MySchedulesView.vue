@@ -60,13 +60,14 @@ function loadData() {
     }
   )
 
-  // 2. 본인 신청 목록 구독
+  // 2. 본인 신청 목록 구독 (ID 및 실명 매칭)
   unsubscribeResponses = subscribeVolunteerResponses(
     sessionStore.volunteerId,
     (rList) => {
       myResponses.value = rList
     },
-    (err) => console.error(err)
+    (err) => console.error(err),
+    sessionStore.volunteerName
   )
 }
 

@@ -16,10 +16,14 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-// 현재 세션의 봉사자가 이 일정에 신청했는지 여부
+// 현재 세션의 봉사자가 이 일정에 신청했는지 여부 (ID 및 실명 매칭)
 const isUserApplied = computed(() => {
-  if (!sessionStore.volunteerId) return false
-  return props.responses.some((r) => r.volunteerId === sessionStore.volunteerId)
+  if (!sessionStore.volunteerId && !sessionStore.volunteerName) return false
+  return props.responses.some(
+    (r) =>
+      r.volunteerId === sessionStore.volunteerId ||
+      (sessionStore.volunteerName && r.volunteerName === sessionStore.volunteerName)
+  )
 })
 
 const statusInfo = computed(() => computeScheduleStatus(props.schedule))
