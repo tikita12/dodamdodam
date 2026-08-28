@@ -450,15 +450,26 @@ function getStoredSchedules(): Schedule[] {
   // 1. 기본 24건 등록
   BASE_REAL_SCHEDULES.forEach((s) => map.set(s.id, { ...s }))
 
-  // 2. 커스텀 등록/수정 일정 머지
+  // 2. 커스텀 등록/수정 일정 머지 (8월 29일 및 9월 5일 테스트 일정 완전 제거)
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('dodam_custom_schedules') : null
     if (raw) {
       const customList = JSON.parse(raw) as any[]
+      const cleanedList: any[] = []
       customList.forEach((rawSched) => {
         const sched = restoreScheduleTimestamp(rawSched)
+        const dateStr = dayjs(sched.startAt.toDate()).format('YYYY-MM-DD')
+        // 8월 29일과 9월 5일 일정은 제외
+        if (dateStr === '2026-08-29' || dateStr === '2026-09-05') {
+          return
+        }
         map.set(sched.id, sched)
+        cleanedList.push(rawSched)
       })
+      // 정리된 목록 로컬 스토리지에 재저장
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dodam_custom_schedules', JSON.stringify(cleanedList))
+      }
     }
   } catch {}
 

@@ -98,14 +98,32 @@ const REAL_RESPONSES: VolunteerResponse[] = [
 ]
 
 function getStoredResponses(): VolunteerResponse[] {
+  const map = new Map<string, VolunteerResponse>()
+
+  // 1. 기본 원본 100% 실명 신청 데이터 등록 (장보윤 10건 포함 전체 복원)
+  REAL_RESPONSES.forEach((r) => {
+    map.set(`${r.scheduleId}_${r.volunteerId}`, { ...r })
+  })
+
+  // 2. 로컬 스토리지 추가 신청 내역 머지
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('dodam_custom_responses') : null
     if (raw) {
       const parsed = JSON.parse(raw) as VolunteerResponse[]
-      return parsed
+      parsed.forEach((r) => {
+        // 유효한 봉사자 신청인 경우 머지
+        if (r.scheduleId && r.volunteerId) {
+          map.set(`${r.scheduleId}_${r.volunteerId}`, r)
+        }
+      })
+    }
+    // 정리된 전체 목록 다시 로컬 스토리지에 저장
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dodam_custom_responses', JSON.stringify(Array.from(map.values())))
     }
   } catch {}
-  return [...REAL_RESPONSES]
+
+  return Array.from(map.values())
 }
 
 const localResponses: VolunteerResponse[] = getStoredResponses()
