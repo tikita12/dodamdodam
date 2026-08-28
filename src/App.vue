@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, RouterView } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -11,16 +11,16 @@ const isEntryView = computed(() => route.path === '/')
 </script>
 
 <template>
-  <div class="min-h-screen max-w-md mx-auto bg-slate-50 shadow-sm border-x border-slate-100 flex flex-col relative text-slate-800 antialiased">
+  <div class="min-h-screen min-h-[100dvh] w-full max-w-xl mx-auto bg-slate-50 shadow-sm sm:border-x sm:border-slate-100 flex flex-col relative text-slate-800 antialiased">
     <!-- Top Fixed Header -->
     <AppHeader />
 
     <!-- Main Content Body -->
-    <main :class="['flex-1 flex flex-col', !isEntryView ? 'pb-20' : '']">
+    <main :class="['flex-1 flex flex-col w-full', !isEntryView ? 'pb-20' : '']">
       <RouterView />
     </main>
 
-    <!-- Bottom Navigation Bar (?? ?�정, 관리자) -->
+    <!-- Bottom Navigation Bar -->
     <AppBottomNav />
 
     <!-- Global Volunteer Change Modal -->
@@ -32,5 +32,5 @@ const isEntryView = computed(() => route.path === '/')
 </template>
 
 <style scoped>
-/* Mobile app frame styling */
+/* App layout styling */
 </style>

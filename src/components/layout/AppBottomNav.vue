@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
@@ -45,9 +45,9 @@ function handleNavigate(type: 'home' | 'my' | 'admin') {
 <template>
   <nav
     v-if="!isEntryView"
-    class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto px-4 py-2 flex items-center justify-around shadow-lg shadow-slate-900/5 select-none"
+    class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 max-w-xl mx-auto px-4 py-2 flex items-center justify-around shadow-lg shadow-slate-900/5 select-none"
   >
-    <!-- 1. 홈 탭 -->
+    <!-- 1. 홈 -->
     <button
       type="button"
       @click="handleNavigate('home')"
