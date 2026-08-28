@@ -7,9 +7,7 @@ import { auth } from '@/firebase/config'
 import { isAllowedAdminEmail } from '@/utils/admin'
 
 /**
- * 관리자 이메일/비밀번호 로그인
- * - Firebase 연동 시: Firebase Auth 실제 인증
- * - 로컬 개발/데모 환경: 지정된 관리자 이메일(bshine530@gmail.com 등) 입력 시 즉시 관리자 세션 생성
+ * 관리자 이메일/비밀번호 정식 Firebase Authentication 로그인
  */
 export async function loginAdminWithEmail(email: string, pass: string): Promise<User> {
   const trimmedEmail = email.trim()
@@ -33,35 +31,27 @@ export async function loginAdminWithEmail(email: string, pass: string): Promise<
   } catch (err: unknown) {
     const errorCode = (err as { code?: string })?.code
 
-    // 실제 Firebase에 해당 계정이 비밀번호 틀림으로 온 경우
-    if (errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
-      throw new Error('비밀번호가 올바르지 않습니다.')
+    if (
+      errorCode === 'auth/wrong-password' ||
+      errorCode === 'auth/invalid-credential' ||
+      errorCode === 'auth/invalid-login-credentials'
+    ) {
+      throw new Error('비밀번호가 올바르지 않습니다. 다시 확인해주세요.')
     }
 
-    // Firebase 키 미설정 또는 로컬 데모 환경인 경우 스마트 Mock 로그인 처리
-    console.warn('[AdminAuth] Firebase Auth 서버 통신 불가 (로컬 데모 관리자 모드로 로그인합니다):', err)
-
-    const mockAdminUser: User = {
-      uid: `admin-${Date.now()}`,
-      email: trimmedEmail,
-      emailVerified: true,
-      isAnonymous: false,
-      metadata: {},
-      providerData: [],
-      refreshToken: 'mock-refresh-token',
-      tenantId: null,
-      delete: async () => {},
-      getIdToken: async () => 'mock-token',
-      getIdTokenResult: async () => ({} as any),
-      reload: async () => {},
-      toJSON: () => ({}),
-      displayName: '운영 관리자',
-      phoneNumber: null,
-      photoURL: null,
-      providerId: 'password',
+    if (errorCode === 'auth/user-not-found') {
+      throw new Error('Firebase 콘솔에 등록되지 않은 관리자 계정입니다.')
     }
 
-    return mockAdminUser
+    if (errorCode === 'auth/too-many-requests') {
+      throw new Error('연속된 로그인 실패로 일시 차단되었습니다. 잠시 후 다시 시도해주세요.')
+    }
+
+    if (err instanceof Error) {
+      throw err
+    }
+
+    throw new Error('관리자 로그인 인증에 실패했습니다.')
   }
 }
 
